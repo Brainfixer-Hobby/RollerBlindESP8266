@@ -385,69 +385,68 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void handleRoot() {
-  String html;
+  
+  const char webpage[] = R"=====(
+<html>
+  <head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 
-  html += "<html>\n <head>\n";
-  html += "<script src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js\"></script>";
+    <script type="text/javascript">
+      $(document).ready(function() {
+        $("#up").click(function() {
+          $.ajax({
+            type: 'POST',
+            url: 'moveUp',
+            success: function(data) {
+              $("p").text(data);
+            },
+            error: function(result) {
+              alert('error');
+            }
+          });
+          });
 
-  html +=
-    "<script type=\"text/javascript\">"
-    "$(document).ready(function(){"
-    "$(\"#up\").click(function(){"
+        $("#down").click(function() {
+          $.ajax({
+            type: 'POST',
+            url: 'moveDown',
+            success: function(data) {
+              $("p").text(data);
+            },
+            error: function(result) {
+              alert('error');
+            }
+          });
+          });
 
-    " $.ajax({"
-    "type: 'POST',"
-    "url: 'moveUp',"
-    " success: function(data) {"
-    " $(\"p\").text(data);"
-    "},"
-    "error: function(result) {"
-    "alert('error');"
-    "}"
-    "});"
-    "});"
+        $("#stop").click(function() {
+          $.ajax({
+            type: 'POST',
+            url: 'stop',
+            success: function(data) {
+              $("p").text(data);
+            },
+            error: function(result) {
+              alert('error');
+            }
+          });
+          });
+      });
+    </script>
+  </head>
+  
+  <body>
+    <button type="button" name="up" id="up">Up</button>
+    <button type="button" name="down" id="down">Down</button>
+    <button type="button" name="stop" id="stop">Stop</button>
+    <p></p>
+  <body>
+<html>
+  )=====";
+  
+  //" Без этой кавычки код не компилируется после вставки raw string literal выше:)
 
-    "$(\"#down\").click(function(){"
-
-    " $.ajax({"
-    "type: 'POST',"
-    "url: 'moveDown',"
-    " success: function(data) {"
-    " $(\"p\").text(data);"
-    "},"
-    "error: function(result) {"
-    "alert('error');"
-    "}"
-    "});"
-    "});"
-
-    "$(\"#stop\").click(function(){"
-
-    " $.ajax({"
-    "type: 'POST',"
-    "url: 'stop',"
-    " success: function(data) {"
-    " $(\"p\").text(data);"
-    "},"
-    "error: function(result) {"
-    "alert('error');"
-    "}"
-    "});"
-    "});"
-
-    
-    "});"
-    "</script>";
-
-  html += "</head> \n<body>\n";
-
-  html += "<button type=\"button\" name=\"up\" id=\"up\">Up</button>";
-  html += "<button type=\"button\" name=\"down\" id=\"down\">Down</button>";
-  html += "<button type=\"button\" name=\"stop\" id=\"stop\">Stop</button>";
-  html += "<p></p>";
-  html += "</body>\n</html>";
-
-  server.send (200, "text/html", html);
+  server.send_P (200, "text/html", webpage);
 }
 
 void handleNotFound() {

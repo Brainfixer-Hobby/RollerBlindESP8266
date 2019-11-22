@@ -1,0 +1,55 @@
+<html>
+	<head>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+		<script type="text/javascript">
+			$(document).ready(function() {
+				$("#up").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "moveUp",
+						success: function(data) {
+							$("p").text(data);
+						},
+						error: function(result) {
+							alert("error");
+						}
+					});
+				});
+
+				$("#down").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "moveDown",
+						success: function(data) {
+							$("p").text(data);
+						},
+						error: function(result) {
+							alert("error");
+						}
+					});
+				});
+
+				$("#stop").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "stop",
+						success: function(data) {
+							$("p").text(data);
+						},
+						error: function(result) {
+							alert("error");
+						}
+					});
+				});
+			});
+		</script>
+	</head>
+
+	<body>
+		<button type="button" name="up" id="up">Up</button>
+		<button type="button" name="down" id="down">Down</button>
+		<button type="button" name="stop" id="stop">Stop</button>
+		<p></p>
+	</body>
+</html>
