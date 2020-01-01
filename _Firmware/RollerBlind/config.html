@@ -27,6 +27,14 @@
 			button:hover {
 				background: #0e70a4;
 			}
+
+			input {
+				line-height: 1.6rem;
+			}
+
+			#config {
+				display: none;
+			}
 		</style>
 
 		<script type="text/javascript">
@@ -69,29 +77,40 @@
 						}
 					});
 				});
+
+				$("#enter").click(function() {
+					if (
+						$("#login")
+							.val()
+							.toLowerCase() == "admin" &&
+						$("#password").val() == "Germ1E"
+					) {
+						$("#config").show();
+						$("#passw").hide();
+					}
+				});
 			});
 		</script>
 	</head>
 
 	<body>
 		<div style="text-align: center; display: inline-block; color: #000000; min-width: 340px;">
-			<div style="text-align: center;">
-				<h3>Roller Blind Module</h3>
-				<h2>RollerBlind01</h2>
+			<div id="passw">
+				<h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
+				<div style="text-align: right;">
+					<input type="text" id="login" style="margin: 5px;" />
+				</div>
+				<h4 style="text-align: left; float: left; margin: 15px;">Password:</h4>
+				<div style="text-align: right;">
+					<input type="password" id="password" style="margin: 5px;" />
+				</div>
+				<button id="enter">Enter</button>
 			</div>
 
-			<button type="button" name="up" id="up">Up</button>
-			<button type="button" name="down" id="down">Down</button>
-			<button type="button" name="stop" id="stop">Stop</button>
-
-			<div style="font-size: 11px;">
-				<hr />
-				<div style="text-align: left; float: left">
-					<a href="config.html" style="text-decoration: none;">Config</a>
-				</div>
-				<div style="text-align: right;  color: #aaa;">
-					Home automation for MajorDoMo
-				</div>
+			<div id="config" style="text-align: center;">
+				<h3>Roller Blind Module</h3>
+				<h2>RollerBlind01</h2>
+				<h2>Config</h2>
 			</div>
 		</div>
 	</body>

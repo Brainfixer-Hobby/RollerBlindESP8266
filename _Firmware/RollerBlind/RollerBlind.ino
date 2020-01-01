@@ -1,5 +1,6 @@
 #define deviceName (const char *)"RollerBlind01"
-const char* mqtt_server = "192.168.0.252";
+#define deviceDesc (const char *)"Штора01"
+const char *mqtt_server = "192.168.0.252";
 
 #define STBY 16
 #define PWMA 13
@@ -8,6 +9,105 @@ const char* mqtt_server = "192.168.0.252";
 #define HALL_A 5
 #define HALL_B 4
 
+char webpage[] PROGMEM = R"=====(
+  
+<html>
+	<head>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+		<style>
+			body {
+				text-align: center;
+				font-family: verdana, sans-serif;
+				background: #ffffff;
+			}
+			div {
+				padding: 5px;
+				font-size: 1em;
+			}
+			button {
+				border: 0;
+				margin: 5px;
+				border-radius: 0.3rem;
+				background: #1fa3ec;
+				color: #ffffff;
+				line-height: 2.4rem;
+				font-size: 1.2rem;
+				width: 100%;
+				transition-duration: 0.4s;
+				cursor: pointer;
+			}
+			button:hover {
+				background: #0e70a4;
+			}
+		</style>
+
+		<script type="text/javascript">
+			$(document).ready(function() {
+				$("#up").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "moveUp",
+						success: function(data) {
+							
+						},
+						error: function(result) {
+							
+						}
+					});
+				});
+
+				$("#down").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "moveDown",
+						success: function(data) {
+							
+						},
+						error: function(result) {
+							
+						}
+					});
+				});
+
+				$("#stop").click(function() {
+					$.ajax({
+						type: "POST",
+						url: "stop",
+						success: function(data) {
+							
+						},
+						error: function(result) {
+							
+						}
+					});
+				});
+			});
+		</script>
+	</head>
+
+	<body>
+		<div style="text-align: center; display: inline-block; color: #000000; min-width: 340px;">
+			<div style="text-align: center;">
+				<h3>Roller Blind Module</h3>
+				<h2>RollerBlind01</h2>
+			</div>
+
+			<button type="button" name="up" id="up">Up</button>
+			<button type="button" name="down" id="down">Down</button>
+			<button type="button" name="stop" id="stop">Stop</button>
+
+			<div style="text-align: right; font-size: 11px;">
+        <hr>
+        <p style="color: #aaa;">Home automation for MajorDoMo.</p>
+        </div>
+      </div>
+		</div>
+	</body>
+</html>
+
+)=====";
+
 #include <WiFiManager.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoOTA.h>
@@ -15,11 +115,22 @@ const char* mqtt_server = "192.168.0.252";
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 
-ESP8266WebServer server (80);
+ESP8266WebServer server(80);
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-enum MotorState {
+void reconnect();
+void handleRoot();
+void handleNotFound();
+void callbackMQTT(char *topic, byte *payload, unsigned int length);
+void sendCurrentPositionMQTT();
+void sendTargetPositionMQTT();
+void moveUp();
+void moveDown();
+void stop();
+
+enum MotorState
+{
   UP,
   DOWN,
   STOP
@@ -41,9 +152,11 @@ bool savePosition;
 void ICACHE_RAM_ATTR hallEncoder_A();
 void ICACHE_RAM_ATTR hallEncoder_B();
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  while (!Serial);
+  while (!Serial)
+    ;
 
   EEPROM.begin(512);
   hallEncoder = EEPROM.read(100);
@@ -51,7 +164,8 @@ void setup() {
   newPosition = blindsPosition;
   maxCount = EEPROM.read(501);
 
-  if (maxCount == 0)maxCount = 3;
+  if (maxCount == 0)
+    maxCount = 3;
 
   pinMode(STBY, OUTPUT);
   pinMode(PWMA, OUTPUT);
@@ -67,16 +181,17 @@ void setup() {
 
   switch (hallEncoder)
   {
-    case 1:
-      attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
-      break;
-    case 2:
-      attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
-      break;
-    default:  {
-        attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
-        attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
-      }
+  case 1:
+    attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
+    break;
+  case 2:
+    attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
+    break;
+  default:
+  {
+    attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
+    attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
+  }
   }
 
   WiFiManager wifiManager;
@@ -86,7 +201,6 @@ void setup() {
   wifiManager.autoConnect(deviceName);
 
   Serial.println("WiFi Manager connected.");
-
 
   ArduinoOTA.setPort(8266);
   ArduinoOTA.setHostname(deviceName);
@@ -102,11 +216,16 @@ void setup() {
   });
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed.");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed.");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed.");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed.");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed.");
+    if (error == OTA_AUTH_ERROR)
+      Serial.println("Auth Failed.");
+    else if (error == OTA_BEGIN_ERROR)
+      Serial.println("Begin Failed.");
+    else if (error == OTA_CONNECT_ERROR)
+      Serial.println("Connect Failed.");
+    else if (error == OTA_RECEIVE_ERROR)
+      Serial.println("Receive Failed.");
+    else if (error == OTA_END_ERROR)
+      Serial.println("End Failed.");
   });
 
   ArduinoOTA.begin();
@@ -114,7 +233,7 @@ void setup() {
   Serial.print("ArduinoOTA ready as ");
   Serial.print(ArduinoOTA.getHostname());
   Serial.println(".");
-  
+
   server.onNotFound(handleNotFound);
   server.on("/", handleRoot);
 
@@ -196,75 +315,92 @@ void setup() {
   Serial.println("");
 
   client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
+  client.setCallback(callbackMQTT);
 }
 
-void loop() {
+void loop()
+{
   ArduinoOTA.handle();
 
   server.handleClient();
 
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     reconnect();
   }
   else
     client.loop();
 
-  if (savePosition) {
+  if (savePosition)
+  {
     savePosition = false;
     EEPROM.write(100, hallEncoder);
     EEPROM.write(101, blindsPosition);
     EEPROM.commit();
-    sendMQTTCurrentPositionBuild();
-    sendMQTTTargetPositionBuild();
+    sendCurrentPositionMQTT();
+    sendTargetPositionMQTT();
   }
 }
 
-void ICACHE_RAM_ATTR hallEncoder_A() {
+void ICACHE_RAM_ATTR hallEncoder_A()
+{
   detachInterrupt(digitalPinToInterrupt(HALL_A));
   attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
 
   hallEncoder = 1;
 
-  if (motorState == DOWN) {
+  if (motorState == DOWN)
+  {
     blindsPosition++;
-    if (blindsPosition >= maxCount) stop();
+    if (blindsPosition >= maxCount)
+      stop();
   }
-  else if (motorState == UP) {
+  else if (motorState == UP)
+  {
     blindsPosition--;
-    if (blindsPosition <= 0) stop();
+    if (blindsPosition <= 0)
+      stop();
   }
 }
 
-void ICACHE_RAM_ATTR hallEncoder_B() {
+void ICACHE_RAM_ATTR hallEncoder_B()
+{
   detachInterrupt(digitalPinToInterrupt(HALL_B));
   attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
 
   hallEncoder = 2;
 
-  if (!motorState) {
+  if (!motorState)
+  {
     blindsPosition++;
-    if (blindsPosition >= newPosition || blindsPosition >= maxCount) stop();
+    if (blindsPosition >= newPosition || blindsPosition >= maxCount)
+      stop();
   }
-  else {
+  else
+  {
     blindsPosition--;
-    if (blindsPosition <= newPosition || blindsPosition <= 0) stop();
+    if (blindsPosition <= newPosition || blindsPosition <= 0)
+      stop();
   }
-
 }
 
-void start() {
-  if (newPosition == blindsPosition || newPosition < 0 || newPosition > maxCount) return;
+void start()
+{
+  if (newPosition == blindsPosition || newPosition < 0 || newPosition > maxCount)
+    return;
 
-  if (newPosition > blindsPosition) {
+  if (newPosition > blindsPosition)
+  {
     moveDown();
   }
-  else if (newPosition < blindsPosition) {
+  else if (newPosition < blindsPosition)
+  {
     moveUp();
   }
 }
 
-void moveUp() {
+void moveUp()
+{
   motorState = UP;
   digitalWrite(INA1, HIGH);
   digitalWrite(INA2, LOW);
@@ -272,16 +408,17 @@ void moveUp() {
   digitalWrite(STBY, HIGH);
 }
 
-void moveDown() {
+void moveDown()
+{
   motorState = DOWN;
   digitalWrite(INA1, LOW);
   digitalWrite(INA2, HIGH);
   analogWrite(PWMA, downSpeed);
   digitalWrite(STBY, HIGH);
-
 }
 
-void stop() {
+void stop()
+{
   motorState = STOP;
   digitalWrite(STBY, LOW);
   digitalWrite(INA1, LOW);
@@ -292,22 +429,26 @@ void stop() {
 
 int previousMillisReconnect;
 
-void reconnect() {
-  if (millis() - previousMillisReconnect < 10000)return;
+void reconnect()
+{
+  if (millis() - previousMillisReconnect < 10000)
+    return;
 
   Serial.println("Attempting MQTT connection...");
-  if (client.connect("RollerBlind01")) {
+  if (client.connect(deviceName))
+  {
     Serial.println("MQTT connected.");
 
     client.publish("homebridge/to/add", "{\"name\":\"shtori_1\",\"service_name\":\"Штора 1\",\"service\":\"WindowCovering\"}");
     client.publish("homebridge/to/set/accessoryinformation", "{\"name\": \"shtori_1\", \"manufacturer\": \"espressif\", \"model\": \"esp12e\", \"serialnumber\": \"1113\"}");
 
-    sendMQTTCurrentPositionBuild();
-    sendMQTTTargetPositionBuild();
+    sendCurrentPositionMQTT();
+    sendTargetPositionMQTT();
 
     client.subscribe("homebridge/from/set");
   }
-  else {
+  else
+  {
     Serial.print("Connection to MQTt failed, rc=");
     Serial.print(client.state());
     Serial.println(".");
@@ -316,7 +457,8 @@ void reconnect() {
   previousMillisReconnect = millis();
 }
 
-void sendMQTTCurrentPositionBuild() {
+void sendCurrentPositionMQTT()
+{
   StaticJsonDocument<200> root;
 
   root["name"] = deviceName;
@@ -331,7 +473,8 @@ void sendMQTTCurrentPositionBuild() {
     Serial.println("Отправлено:" + (String)json);
 }
 
-void sendMQTTTargetPositionBuild() {
+void sendTargetPositionMQTT()
+{
 
   StaticJsonDocument<200> root;
 
@@ -347,13 +490,15 @@ void sendMQTTTargetPositionBuild() {
     Serial.println("Отправлено:" + (String)json);
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void callbackMQTT(char *topic, byte *payload, unsigned int length)
+{
   String json;
 
   Serial.print("MQTT message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++)
+  {
     Serial.print((char)payload[i]);
     json += (char)payload[i];
   }
@@ -362,21 +507,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
   mqttTextIn = (String)topic + " " + json;
 
   StaticJsonDocument<200> root;
-  
+
   DeserializationError error = deserializeJson(root, json);
-  
-  if (error) {
+
+  if (error)
+  {
     Serial.println("Deserialization failed.");
     return;
   }
-  
+
   String nameSubscribe = root["name"];
   String characteristic = root["characteristic"];
   int v = root["value"];
 
-  if (nameSubscribe == deviceName && characteristic == "TargetPosition") {
+  if (nameSubscribe == deviceName && characteristic == "TargetPosition")
+  {
     v = 100 - v;
-    if (v != newPosition) {
+    if (v != newPosition)
+    {
       newPosition = v * maxCount / 100;
       Serial.println("newPulse:" + (String)newPosition);
       start();
@@ -384,72 +532,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void handleRoot() {
-  
-  const char webpage[] = R"=====(
-<html>
-  <head>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-
-    <script type="text/javascript">
-      $(document).ready(function() {
-        $("#up").click(function() {
-          $.ajax({
-            type: 'POST',
-            url: 'moveUp',
-            success: function(data) {
-              $("p").text(data);
-            },
-            error: function(result) {
-              alert('error');
-            }
-          });
-          });
-
-        $("#down").click(function() {
-          $.ajax({
-            type: 'POST',
-            url: 'moveDown',
-            success: function(data) {
-              $("p").text(data);
-            },
-            error: function(result) {
-              alert('error');
-            }
-          });
-          });
-
-        $("#stop").click(function() {
-          $.ajax({
-            type: 'POST',
-            url: 'stop',
-            success: function(data) {
-              $("p").text(data);
-            },
-            error: function(result) {
-              alert('error');
-            }
-          });
-          });
-      });
-    </script>
-  </head>
-  
-  <body>
-    <button type="button" name="up" id="up">Up</button>
-    <button type="button" name="down" id="down">Down</button>
-    <button type="button" name="stop" id="stop">Stop</button>
-    <p></p>
-  <body>
-<html>
-  )=====";
-  
-  //" Без этой кавычки код не компилируется после вставки raw string literal выше:)
-
-  server.send_P (200, "text/html", webpage);
+void handleRoot()
+{
+  server.send_P(200, "text/html", webpage);
 }
 
-void handleNotFound() {
+void handleNotFound()
+{
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -459,7 +548,8 @@ void handleNotFound() {
   message += server.args();
   message += "\n";
 
-  for (uint8_t i = 0; i < server.args(); i++) {
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
