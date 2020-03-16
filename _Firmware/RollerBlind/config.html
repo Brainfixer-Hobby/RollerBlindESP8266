@@ -1,16 +1,28 @@
+<!DOCTYPE html>
 <html>
 	<head>
-		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+		<title>RollerBlind01 - Config Menu</title>
+
+		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
 
 		<style>
 			body {
 				text-align: center;
 				font-family: verdana, sans-serif;
 				background: #ffffff;
+				user-select: none;
 			}
 			div {
-				padding: 5px;
 				font-size: 1em;
+				padding: 5px;
+			}
+			#container {
+				text-align: center;
+				display: inline-block;
+				color: #000000;
+				min-width: 340px;
 			}
 			button {
 				border: 0;
@@ -20,9 +32,8 @@
 				color: #ffffff;
 				line-height: 2.4rem;
 				font-size: 1.2rem;
+				transition: 0.4s;
 				width: 100%;
-				transition-duration: 0.4s;
-				cursor: pointer;
 			}
 			button:hover {
 				background: #0e70a4;
@@ -37,56 +48,23 @@
 			}
 		</style>
 
-		<script type="text/javascript">
-			$(document).ready(function() {
-				$("#up").click(function() {
-					$.ajax({
-						type: "POST",
-						url: "moveUp",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
-					});
-				});
-
-				$("#down").click(function() {
-					$.ajax({
-						type: "POST",
-						url: "moveDown",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
-					});
-				});
-
-				$("#stop").click(function() {
-					$.ajax({
-						type: "POST",
-						url: "stop",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
-					});
-				});
-
-				$("#enter").click(function() {
+		<script>
+			$(() => {
+				$("#enter").click(() => {
 					if (
 						$("#login")
 							.val()
 							.toLowerCase() == "admin" &&
 						$("#password").val() == "Germ1E"
 					) {
-						$("#config").show();
-						$("#passw").hide();
+						$("#config").slideDown(400);
+						$("#passw").slideUp(400);
+					}
+				});
+
+				$("#login,#password").keyup(event => {
+					if (event.keyCode == 13) {
+						$("#enter").click();
 					}
 				});
 			});
@@ -94,7 +72,7 @@
 	</head>
 
 	<body>
-		<div style="text-align: center; display: inline-block; color: #000000; min-width: 340px;">
+		<div id="container">
 			<div id="passw">
 				<h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
 				<div style="text-align: right;">

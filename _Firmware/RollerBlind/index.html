@@ -1,98 +1,194 @@
+<!DOCTYPE html>
 <html>
 	<head>
-		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+		<title>RollerBlind01 - Main Menu</title>
+
+		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
 
 		<style>
 			body {
 				text-align: center;
 				font-family: verdana, sans-serif;
 				background: #ffffff;
+				user-select: none;
 			}
 			div {
-				padding: 5px;
 				font-size: 1em;
+				padding: 5px;
 			}
+			#container {
+				text-align: center;
+				display: inline-block;
+				color: #000000;
+				min-width: 340px;
+			}
+
+			table {
+				border-spacing: 1em 0;
+				width: 100%;
+			}
+
+			td {
+				padding: 0px;
+			}
+
 			button {
 				border: 0;
 				margin: 5px;
 				border-radius: 0.3rem;
 				background: #1fa3ec;
 				color: #ffffff;
-				line-height: 2.4rem;
+				line-height: 3.2rem;
 				font-size: 1.2rem;
+				transition: 0.4s;
 				width: 100%;
-				transition-duration: 0.4s;
-				cursor: pointer;
+				outline: none;
 			}
+
 			button:hover {
 				background: #0e70a4;
 			}
+
+			#stop {
+				background: #d43535;
+			}
+			#stop:hover {
+				background: #931f1f;
+			}
+
+			#range {
+				-webkit-appearance: none;
+				appearance: none;
+				background: #1fa3ec;
+				outline: none;
+				border-radius: 0.6rem;
+				height: 24px;
+				width: 65%;
+				margin: 0;
+			}
+
+			#range::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 18px;
+				height: 40px;
+				background: #1fa3ec;
+				border: 2px solid black;
+				border-radius: 0.4rem;
+			}
+
+			#range::-webkit-slider-thumb:hover {
+				background: #0e70a4;
+			}
+
+			.triangle {
+				font-size: 2em;
+			}
+
+			footer {
+				font-size: 11px;
+				margin: 5px 30px;
+			}
 		</style>
 
-		<script type="text/javascript">
-			$(document).ready(function() {
-				$("#up").click(function() {
+		<script>
+			$(() => {
+				let changeTimer = setInterval(readPosition, 500);
+
+				$("#manualUp, #open").mousedown(() => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
 					$.ajax({
 						type: "POST",
-						url: "moveUp",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
+						url: "moveUp"
 					});
 				});
 
-				$("#down").click(function() {
+				$("#manualDn, #close").mousedown(() => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
 					$.ajax({
 						type: "POST",
-						url: "moveDown",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
+						url: "moveDown"
 					});
 				});
 
-				$("#stop").click(function() {
+				$("#manualUp, #manualDn").mouseup(() => {
+					$("#stop").trigger("mousedown");
+				});
+
+				$("#range").change(() => {
+					$("#stop").trigger("mousedown");
 					$.ajax({
 						type: "POST",
-						url: "stop",
-						success: function(data) {
-							$("p").text(data);
-						},
-						error: function(result) {
-							alert("error");
-						}
+						url: "moveto",
+						data: { val: $("#range").val() * 10 }
 					});
 				});
+
+				$("#stop").mousedown(() => {
+					$("#range").prop("disabled", false);
+					$("#range").css("background", "#1fa3ec");
+					$.ajax({
+						type: "POST",
+						url: "stop"
+					});
+				});
+
+				let counter = 0;
+				function readPosition() {
+					$.ajax({
+						type: "POST",
+						url: "status",
+						success: answer => {
+							let data = JSON.parse(answer);
+							$("#range").val() = data.blindsPosition / 10;
+						}
+					});
+				}
 			});
 		</script>
 	</head>
 
 	<body>
-		<div style="text-align: center; display: inline-block; color: #000000; min-width: 340px;">
-			<div style="text-align: center;">
-				<h3>Roller Blind Module</h3>
-				<h2>RollerBlind01</h2>
-			</div>
+		<div id="container">
+			<h3>Roller Blind Module</h3>
+			<h2>RollerBlind01</h2>
 
-			<button type="button" name="up" id="up">Up</button>
-			<button type="button" name="down" id="down">Down</button>
-			<button type="button" name="stop" id="stop">Stop</button>
+			<table>
+				<tbody>
+					<tr>
+						<td style="width:35%"><button id="manualUp">Manual UP</button></td>
+						<td style="width:65%"><button id="open">Open</button></td>
+					</tr>
+					<tr>
+						<td style="width:35%"><button id="manualDn">Manual DN</button></td>
+						<td style="width:65%">
+							<span class="triangle">&#9660;</span>
+							<input type="range" id="range" min="0" max="10" />
+							<span class="triangle" style="color: #FFE000">&#9650;</span>
+						</td>
+					</tr>
+					<tr>
+						<td style="width:35%"><button id="stop">Stop</button></td>
+						<td style="width:65%"><button id="close">Close</button></td>
+					</tr>
+				</tbody>
+			</table>
 
-			<div style="font-size: 11px;">
+			<footer>
 				<hr />
-				<div style="text-align: left; float: left">
+				<div style="float: left">
 					<a href="config.html" style="text-decoration: none;">Config</a>
 				</div>
 				<div style="text-align: right;  color: #aaa;">
 					Home automation for MajorDoMo
 				</div>
-			</div>
+			</footer>
 		</div>
 	</body>
 </html>
