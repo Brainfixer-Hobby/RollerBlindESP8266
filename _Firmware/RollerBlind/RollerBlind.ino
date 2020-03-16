@@ -303,9 +303,9 @@ void stop();
 
 enum MotorState
 {
+  STOP,
   UP,
-  DOWN,
-  STOP
+  DOWN
 };
 
 int lastBlindsPosition;
@@ -500,6 +500,8 @@ void setup()
       root["HALL_B"] = (String)digitalRead(HALL_B);
 
       root["hallEncoder"] = (String)hallEncoder;
+
+      root["isMoving"] = (String)motorState;
 
       root["maxCount"] = (String)maxCount;
       root["upSpeed"] = (String)upSpeed;
