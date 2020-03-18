@@ -80,7 +80,7 @@ char mainPage[] PROGMEM = R"=====(
 				outline: none;
 				border-radius: 0.6rem;
 				height: 24px;
-				width: 65%;
+				width: 60%;
 				margin: 0;
 			}
 
@@ -113,7 +113,7 @@ char mainPage[] PROGMEM = R"=====(
 				let changeTimer;
 				readStatus();
 
-				$("#manualUp, #open").mousedown(() => {
+				$("#manualUp, #open").bind("mousedown touchstart", () => {
 					$("#stop").trigger("mousedown");
 					$("#range").prop("disabled", true);
 					$("#range").css("background", "#931f1f");
@@ -121,10 +121,10 @@ char mainPage[] PROGMEM = R"=====(
 						type: "POST",
 						url: "moveup"
 					});
-          changeTimer = setInterval(readStatus, 500);         
+					changeTimer = setInterval(readStatus, 500);
 				});
 
-				$("#manualDn, #close").mousedown(() => {
+				$("#manualDn, #close").bind("mousedown touchstart", () => {
 					$("#stop").trigger("mousedown");
 					$("#range").prop("disabled", true);
 					$("#range").css("background", "#931f1f");
@@ -132,14 +132,14 @@ char mainPage[] PROGMEM = R"=====(
 						type: "POST",
 						url: "movedown"
 					});
-          changeTimer = setInterval(readStatus, 500);
+					changeTimer = setInterval(readStatus, 500);
 				});
 
-				$("#manualUp, #manualDn").mouseup(() => {
+				$("#manualUp, #manualDn").bind("mouseup touchend", () => {
 					$("#stop").trigger("mousedown");
 				});
 
-				$("#range").mousedown(() => {
+				$("#range").bind("mousedown touchstart", () => {
 					$("#stop").trigger("mousedown");
 					clearInterval(changeTimer);
 				});
@@ -153,18 +153,18 @@ char mainPage[] PROGMEM = R"=====(
 							val: $("#range").val() * 10
 						}
 					});
-         changeTimer = setInterval(readStatus, 500);
+					changeTimer = setInterval(readStatus, 500);
 				});
 
-				$("#stop").mousedown(() => {
+				$("#stop").bind("mousedown touchstart", () => {
 					$("#range").prop("disabled", false);
 					$("#range").css("background", "#1fa3ec");
 					clearInterval(changeTimer);
-					readStatus();
 					$.ajax({
 						type: "POST",
 						url: "stop"
 					});
+					readStatus();
 				});
 
 				function readStatus() {
@@ -188,11 +188,11 @@ char mainPage[] PROGMEM = R"=====(
 			<table>
 				<tbody>
 					<tr>
-						<td style="width:35%"><button id="manualUp">Manual UP</button></td>
+						<td style="width:35%"><button id="manualUp">Man. UP</button></td>
 						<td style="width:65%"><button id="open">Open</button></td>
 					</tr>
 					<tr>
-						<td style="width:35%"><button id="manualDn">Manual DN</button></td>
+						<td style="width:35%"><button id="manualDn">Man. DN</button></td>
 						<td style="width:65%">
 							<span class="triangle">&#9660;</span>
 							<input type="range" id="range" min="0" max="10" />
