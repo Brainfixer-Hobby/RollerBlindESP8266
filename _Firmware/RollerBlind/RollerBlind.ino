@@ -10,6 +10,7 @@ const char *mqtt_server = "192.168.1.1";
 #define HALL_B 4
 
 char mainPage[] PROGMEM = R"=====(
+  
 <!DOCTYPE html>
 <html>
 	<head>
@@ -18,7 +19,6 @@ char mainPage[] PROGMEM = R"=====(
 		<title>RollerBlind01 - Main Menu</title>
 
 		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-
 		<style>
 			body {
 				text-align: center;
@@ -26,10 +26,12 @@ char mainPage[] PROGMEM = R"=====(
 				background: #ffffff;
 				user-select: none;
 			}
+
 			div {
 				font-size: 1em;
 				padding: 5px;
 			}
+
 			#container {
 				text-align: center;
 				display: inline-block;
@@ -56,6 +58,7 @@ char mainPage[] PROGMEM = R"=====(
 				font-size: 1.2rem;
 				transition: 0.4s;
 				width: 100%;
+				outline: none;
 			}
 
 			button:hover {
@@ -65,6 +68,7 @@ char mainPage[] PROGMEM = R"=====(
 			#stop {
 				background: #d43535;
 			}
+
 			#stop:hover {
 				background: #931f1f;
 			}
@@ -80,10 +84,6 @@ char mainPage[] PROGMEM = R"=====(
 				margin: 0;
 			}
 
-			#range:hover {
-				background: #0e70a4;
-			}
-
 			#range::-webkit-slider-thumb {
 				-webkit-appearance: none;
 				appearance: none;
@@ -92,6 +92,10 @@ char mainPage[] PROGMEM = R"=====(
 				background: #1fa3ec;
 				border: 2px solid black;
 				border-radius: 0.4rem;
+			}
+
+			#range::-webkit-slider-thumb:hover {
+				background: #0e70a4;
 			}
 
 			.triangle {
@@ -106,33 +110,72 @@ char mainPage[] PROGMEM = R"=====(
 
 		<script>
 			$(() => {
+				let changeTimer;
+				readStatus();
+
 				$("#manualUp, #open").mousedown(() => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
 					$.ajax({
 						type: "POST",
-						url: "moveUp"
+						url: "moveup"
 					});
+          changeTimer = setInterval(readStatus, 500);         
 				});
 
 				$("#manualDn, #close").mousedown(() => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
 					$.ajax({
 						type: "POST",
-						url: "moveDown"
+						url: "movedown"
 					});
+          changeTimer = setInterval(readStatus, 500);
 				});
 
 				$("#manualUp, #manualDn").mouseup(() => {
+					$("#stop").trigger("mousedown");
+				});
+
+				$("#range").mousedown(() => {
+					$("#stop").trigger("mousedown");
+					clearInterval(changeTimer);
+				});
+
+				$("#range").change(() => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "moveto",
+						data: {
+							val: $("#range").val() * 10
+						}
+					});
+         changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#stop").mousedown(() => {
+					$("#range").prop("disabled", false);
+					$("#range").css("background", "#1fa3ec");
+					clearInterval(changeTimer);
+					readStatus();
 					$.ajax({
 						type: "POST",
 						url: "stop"
 					});
 				});
 
-				$("#stop").mousedown(() => {
+				function readStatus() {
 					$.ajax({
 						type: "POST",
-						url: "stop"
+						url: "status",
+						success: answer => {
+							$("#range").val(answer.blindsPosition / 10);
+						}
 					});
-				});
+				}
 			});
 		</script>
 	</head>
@@ -176,11 +219,9 @@ char mainPage[] PROGMEM = R"=====(
 	</body>
 </html>
 
-
 )=====";
 
 char configPage[] PROGMEM = R"=====(
-
 <!DOCTYPE html>
 <html>
   <head>
@@ -276,7 +317,6 @@ char configPage[] PROGMEM = R"=====(
     </div>
   </body>
 </html>
-
 )=====";
 
 #include <WiFiManager.h>
@@ -297,6 +337,7 @@ void handleNotFound();
 void callbackMQTT(char *topic, byte *payload, unsigned int length);
 void sendCurrentPositionMQTT();
 void sendTargetPositionMQTT();
+void start();
 void moveUp();
 void moveDown();
 void stop();
@@ -308,7 +349,6 @@ enum MotorState
   DOWN
 };
 
-int lastBlindsPosition;
 int blindsPosition;
 int newPosition;
 
@@ -426,8 +466,12 @@ void setup()
       maxCount = server.arg("val").toInt();
       EEPROM.write(501, maxCount);
       EEPROM.commit();
-      server.send(200, "text/plain", "setMaxCount:OK!");
     }
+    else
+    {
+      maxCount = blindsPosition;
+    }
+    server.send(200, "text/plain", "setMaxCount:OK!");
   });
 
   server.on("/setupspeed", []() {
@@ -441,6 +485,10 @@ void setup()
       EEPROM.write(503, upSpeed);
       EEPROM.commit();
       server.send(200, "text/plain", "setUpSpeed:OK!");
+    }
+    else
+    {
+      server.send(200, "text/plain", "No ?val= parameter!");
     }
   });
 
@@ -456,6 +504,10 @@ void setup()
       EEPROM.commit();
       server.send(200, "text/plain", "setDownSpeed:OK!");
     }
+    else
+    {
+      server.send(200, "text/plain", "No ?val= parameter!");
+    }
   });
 
   server.on("/stop", []() {
@@ -470,303 +522,310 @@ void setup()
       int v = server.arg("val").toInt();
 
       v = 100 - v;
-      if (v != newPosition)
+      if (v * maxCount / 100 != newPosition)
       {
         newPosition = v * maxCount / 100;
         Serial.println("newPulse:" + (String)newPosition);
         start();
-        server.send(200, "text/plain", "moveTo:OK!");
       }
-    });
+      server.send(200, "text/plain", "moveTo:OK!");
+    }
+    else
+    {
+      server.send(200, "text/plain", "No ?val= parameter!");
+    }
+  });
 
-    server.on("/setdefault", []() {
-      blindsPosition = 0;
-      newPosition = 0;
-      EEPROM.write(100, hallEncoder);
-      EEPROM.write(101, blindsPosition);
-      EEPROM.commit();
-      server.send(200, "text/plain", "setDefault:OK!");
-    });
+  server.on("/setdefault", []() {
+    blindsPosition = 50;
+    newPosition = 50;
+    EEPROM.write(100, hallEncoder);
+    EEPROM.write(101, blindsPosition);
+    EEPROM.write(503, downSpeed);
+    EEPROM.write(505, downSpeed);
+    EEPROM.commit();
+    server.send(200, "text/plain", "setDefault:OK!");
+  });
 
-    server.on("/reset", []() {
-      server.send(200, "text/plain", "reset:OK!: ");
-      ESP.restart();
-    });
+  server.on("/reset", []() {
+    server.send(200, "text/plain", "reset:OK!: ");
+    ESP.restart();
+  });
 
-    server.on("/status", []() {
-      StaticJsonDocument<256> root;
+  server.on("/status", []() {
+    StaticJsonDocument<256> root;
 
-      root["HALL_A"] = (String)digitalRead(HALL_A);
-      root["HALL_B"] = (String)digitalRead(HALL_B);
+    root["HALL_A"] = (String)digitalRead(HALL_A);
+    root["HALL_B"] = (String)digitalRead(HALL_B);
 
-      root["hallEncoder"] = (String)hallEncoder;
+    root["hallEncoder"] = (String)hallEncoder;
 
-      root["isMoving"] = (String)motorState;
+    root["isMoving"] = (String)motorState;
 
-      root["maxCount"] = (String)maxCount;
-      root["upSpeed"] = (String)upSpeed;
-      root["downSpeed"] = (String)downSpeed;
+    root["maxCount"] = (String)maxCount;
+    root["upSpeed"] = (String)upSpeed;
+    root["downSpeed"] = (String)downSpeed;
 
-      root["blindsPosition"] = (String)blindsPosition;
-      root["newPosition"] = (String)newPosition;
+    root["blindsPosition"] = (String)blindsPosition;
+    root["newPosition"] = (String)newPosition;
 
-      String json;
-      serializeJson(root, json);
+    String json;
+    serializeJson(root, json);
 
-      server.send(200, "application/json", json);
-    });
+    server.send(200, "application/json", json);
+  });
 
-    server.on("/mqttStatus", []() {
-      server.send(200, "application/json", mqttTextIn);
-    });
+  server.on("/mqttStatus", []() {
+    server.send(200, "application/json", mqttTextIn);
+  });
 
-    server.begin();
-    Serial.println("HTTP server started!");
-    Serial.println("");
+  server.begin();
+  Serial.println("HTTP server started!");
+  Serial.println("");
 
-    client.setServer(mqtt_server, 1883);
-    client.setCallback(callbackMQTT);
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callbackMQTT);
 }
 
 void loop()
 {
-    ArduinoOTA.handle();
+  ArduinoOTA.handle();
 
-    server.handleClient();
+  server.handleClient();
 
-    if (!client.connected())
-    {
-      reconnect();
-    }
-    else
-      client.loop();
+  if (!client.connected())
+  {
+    reconnect();
+  }
+  else
+    client.loop();
 
-    if (savePosition)
-    {
-      savePosition = false;
-      EEPROM.write(100, hallEncoder);
-      EEPROM.write(101, blindsPosition);
-      EEPROM.commit();
-      sendCurrentPositionMQTT();
-      sendTargetPositionMQTT();
-    }
+  if (savePosition)
+  {
+    savePosition = false;
+    EEPROM.write(100, hallEncoder);
+    EEPROM.write(101, blindsPosition);
+    EEPROM.commit();
+    sendCurrentPositionMQTT();
+    sendTargetPositionMQTT();
+  }
 }
 
 void ICACHE_RAM_ATTR hallEncoder_A()
 {
-    detachInterrupt(digitalPinToInterrupt(HALL_A));
-    attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
+  detachInterrupt(digitalPinToInterrupt(HALL_A));
+  attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
 
-    hallEncoder = 1;
+  hallEncoder = 1;
 
-    if (motorState == DOWN)
-    {
-      blindsPosition++;
-      if (blindsPosition >= maxCount)
-        stop();
-    }
-    else if (motorState == UP)
-    {
-      blindsPosition--;
-      if (blindsPosition <= 0)
-        stop();
-    }
+  if (motorState == DOWN)
+  {
+    blindsPosition++;
+    if (blindsPosition >= maxCount)
+      stop();
+  }
+  else if (motorState == UP)
+  {
+    blindsPosition--;
+    if (blindsPosition <= 0)
+      stop();
+  }
 }
 
 void ICACHE_RAM_ATTR hallEncoder_B()
 {
-    detachInterrupt(digitalPinToInterrupt(HALL_B));
-    attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
+  detachInterrupt(digitalPinToInterrupt(HALL_B));
+  attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
 
-    hallEncoder = 2;
+  hallEncoder = 2;
 
-    if (motorState == DOWN)
-    {
-      blindsPosition++;
-      if (blindsPosition >= newPosition || blindsPosition >= maxCount)
-        stop();
-    }
-    else if (motorState == UP)
-    {
-      blindsPosition--;
-      if (blindsPosition <= newPosition || blindsPosition <= 0)
-        stop();
-    }
+  if (motorState == DOWN)
+  {
+    blindsPosition++;
+    if (blindsPosition >= newPosition || blindsPosition >= maxCount)
+      stop();
+  }
+  else if (motorState == UP)
+  {
+    blindsPosition--;
+    if (blindsPosition <= newPosition || blindsPosition <= 0)
+      stop();
+  }
 }
 
 void start()
 {
-    if (newPosition == blindsPosition || newPosition < 0 || newPosition > maxCount)
-      return;
+  if (newPosition == blindsPosition || newPosition < 0 || newPosition > maxCount)
+    return;
 
-    if (newPosition > blindsPosition)
-    {
-      moveDown();
-    }
-    else if (newPosition < blindsPosition)
-    {
-      moveUp();
-    }
+  if (newPosition > blindsPosition)
+  {
+    moveDown();
+  }
+  else if (newPosition < blindsPosition)
+  {
+    moveUp();
+  }
 }
 
 void moveUp()
 {
-    motorState = UP;
-    digitalWrite(INA1, HIGH);
-    digitalWrite(INA2, LOW);
-    analogWrite(PWMA, upSpeed);
-    digitalWrite(STBY, HIGH);
+  motorState = UP;
+  digitalWrite(INA1, HIGH);
+  digitalWrite(INA2, LOW);
+  analogWrite(PWMA, upSpeed);
+  digitalWrite(STBY, HIGH);
 }
 
 void moveDown()
 {
-    motorState = DOWN;
-    digitalWrite(INA1, LOW);
-    digitalWrite(INA2, HIGH);
-    analogWrite(PWMA, downSpeed);
-    digitalWrite(STBY, HIGH);
+  motorState = DOWN;
+  digitalWrite(INA1, LOW);
+  digitalWrite(INA2, HIGH);
+  analogWrite(PWMA, downSpeed);
+  digitalWrite(STBY, HIGH);
 }
 
 void stop()
 {
-    motorState = STOP;
-    digitalWrite(STBY, LOW);
-    digitalWrite(INA1, LOW);
-    digitalWrite(INA2, LOW);
+  motorState = STOP;
+  digitalWrite(STBY, LOW);
+  digitalWrite(INA1, LOW);
+  digitalWrite(INA2, LOW);
 
-    savePosition = true;
+  savePosition = true;
 }
 
 int previousMillisReconnect;
 
 void reconnect()
 {
-    if (millis() - previousMillisReconnect < 10000)
-      return;
+  if (millis() - previousMillisReconnect < 10000)
+    return;
 
-    Serial.println("Attempting MQTT connection...");
-    if (client.connect(deviceName))
-    {
-      Serial.println("MQTT connected.");
+  Serial.println("Attempting MQTT connection...");
+  if (client.connect(deviceName))
+  {
+    Serial.println("MQTT connected.");
 
-      client.publish("homebridge/to/add", "{\"name\":\"shtori_1\",\"service_name\":\"Штора 1\",\"service\":\"WindowCovering\"}");
-      client.publish("homebridge/to/set/accessoryinformation", "{\"name\": \"shtori_1\", \"manufacturer\": \"espressif\", \"model\": \"esp12e\", \"serialnumber\": \"1113\"}");
+    client.publish("homebridge/to/add", "{\"name\":\"shtori_1\",\"service_name\":\"Штора 1\",\"service\":\"WindowCovering\"}");
+    client.publish("homebridge/to/set/accessoryinformation", "{\"name\": \"shtori_1\", \"manufacturer\": \"espressif\", \"model\": \"esp12e\", \"serialnumber\": \"1113\"}");
 
-      sendCurrentPositionMQTT();
-      sendTargetPositionMQTT();
+    sendCurrentPositionMQTT();
+    sendTargetPositionMQTT();
 
-      client.subscribe("homebridge/from/set");
-    }
-    else
-    {
-      Serial.print("Connection to MQTT failed, rc=");
-      Serial.print(client.state());
-      Serial.println(".");
-    }
+    client.subscribe("homebridge/from/set");
+  }
+  else
+  {
+    Serial.print("Connection to MQTT failed, rc=");
+    Serial.print(client.state());
+    Serial.println(".");
+  }
 
-    previousMillisReconnect = millis();
+  previousMillisReconnect = millis();
 }
 
 void sendCurrentPositionMQTT()
 {
-    StaticJsonDocument<200> root;
+  StaticJsonDocument<200> root;
 
-    root["name"] = deviceName;
-    root["service_name"] = "Штора 1";
-    root["characteristic"] = "CurrentPosition";
-    root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
+  root["name"] = deviceName;
+  root["service_name"] = "Штора 1";
+  root["characteristic"] = "CurrentPosition";
+  root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
 
-    char json[200];
-    serializeJson(root, json);
+  char json[200];
+  serializeJson(root, json);
 
-    if (client.publish("homebridge/to/set", json))
-      Serial.println("Отправлено:" + (String)json);
+  if (client.publish("homebridge/to/set", json))
+    Serial.println("Отправлено:" + (String)json);
 }
 
 void sendTargetPositionMQTT()
 {
-    StaticJsonDocument<200> root;
+  StaticJsonDocument<200> root;
 
-    root["name"] = deviceName;
-    root["service_name"] = "Штора 1";
-    root["characteristic"] = "TargetPosition";
-    root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
+  root["name"] = deviceName;
+  root["service_name"] = "Штора 1";
+  root["characteristic"] = "TargetPosition";
+  root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
 
-    char json[200];
-    serializeJson(root, json);
+  char json[200];
+  serializeJson(root, json);
 
-    if (client.publish("homebridge/to/set", json))
-      Serial.println("Отправлено:" + (String)json);
+  if (client.publish("homebridge/to/set", json))
+    Serial.println("Отправлено:" + (String)json);
 }
 
 void callbackMQTT(char *topic, byte *payload, unsigned int length)
 {
-    String json;
+  String json;
 
-    Serial.print("MQTT message arrived [");
-    Serial.print(topic);
-    Serial.print("] ");
-    for (int i = 0; i < length; i++)
+  Serial.print("MQTT message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+    json += (char)payload[i];
+  }
+  Serial.println();
+
+  mqttTextIn = (String)topic + " " + json;
+
+  StaticJsonDocument<200> root;
+
+  DeserializationError error = deserializeJson(root, json);
+
+  if (error)
+  {
+    Serial.println("Deserialization failed.");
+    return;
+  }
+
+  String nameSubscribe = root["name"];
+  String characteristic = root["characteristic"];
+  int v = root["value"];
+
+  if (nameSubscribe == deviceName && characteristic == "TargetPosition")
+  {
+    v = 100 - v;
+    if (v * maxCount / 100 != newPosition)
     {
-      Serial.print((char)payload[i]);
-      json += (char)payload[i];
+      newPosition = v * maxCount / 100;
+      Serial.println("newPulse:" + (String)newPosition);
+      start();
     }
-    Serial.println();
-
-    mqttTextIn = (String)topic + " " + json;
-
-    StaticJsonDocument<200> root;
-
-    DeserializationError error = deserializeJson(root, json);
-
-    if (error)
-    {
-      Serial.println("Deserialization failed.");
-      return;
-    }
-
-    String nameSubscribe = root["name"];
-    String characteristic = root["characteristic"];
-    int v = root["value"];
-
-    if (nameSubscribe == deviceName && characteristic == "TargetPosition")
-    {
-      v = 100 - v;
-      if (v != newPosition)
-      {
-        newPosition = v * maxCount / 100;
-        Serial.println("newPulse:" + (String)newPosition);
-        start();
-      }
-    }
+  }
 }
 
 void handleRoot()
 {
-    server.send_P(200, "text/html", mainPage);
+  server.send_P(200, "text/html", mainPage);
 }
 
 void handleConfig()
 {
-    server.send_P(200, "text/html", configPage);
+  server.send_P(200, "text/html", configPage);
 }
 
 void handleNotFound()
 {
-    String message = "File Not Found\n\n";
-    message += "URI: ";
-    message += server.uri();
-    message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
-    message += server.args();
-    message += "\n";
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
 
-    for (uint8_t i = 0; i < server.args(); i++)
-    {
-      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-    server.send(404, "text/plain", message);
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
 
-    Serial.println(message);
+  Serial.println(message);
 }
