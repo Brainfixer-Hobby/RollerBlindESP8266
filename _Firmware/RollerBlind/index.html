@@ -1,207 +1,213 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-		<title>RollerBlind01 - Main Menu</title>
 
-		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-		<style>
-			body {
-				text-align: center;
-				font-family: verdana, sans-serif;
-				background: #ffffff;
-				user-select: none;
-			}
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>RollerBlind01 - Main Menu</title>
 
-			div {
-				font-size: 1em;
-				padding: 5px;
-			}
+	<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
+	<style>
+		* {
+			box-sizing: border-box;
+		}
 
-			#container {
-				text-align: center;
-				display: inline-block;
-				color: #000000;
-				min-width: 340px;
-			}
+		body {
+			text-align: center;
+			font-family: verdana, sans-serif;
+			background: #ffffff;
+			user-select: none;
+		}
 
-			table {
-				border-spacing: 1em 0;
-				width: 100%;
-			}
+		div {
+			font-size: 1em;
+			padding: 5px;
+		}
 
-			td {
-				padding: 0px;
-			}
+		#container {
+			text-align: center;
+			display: inline-block;
+			color: #000000;
+			min-width: 340px;
+		}
 
-			button {
-				border: 0;
-				margin: 5px;
-				border-radius: 0.3rem;
-				background: #1fa3ec;
-				color: #ffffff;
-				line-height: 3.2rem;
-				font-size: 1.2rem;
-				transition: 0.4s;
-				width: 100%;
-				outline: none;
-			}
+		table {
+			border-spacing: 1em 0;
+			width: 100%;
+		}
 
-			button:hover {
-				background: #0e70a4;
-			}
+		td {
+			padding: 0px;
+		}
 
-			#stop {
-				background: #d43535;
-			}
+		button {
+			border: 0;
+			margin: 5px 0;
+			border-radius: 0.3rem;
+			background: #1fa3ec;
+			color: #ffffff;
+			line-height: 3.2rem;
+			font-size: 1.2rem;
+			transition: 0.4s;
+			width: 100%;
+			outline: none;
+		}
 
-			#stop:hover {
-				background: #931f1f;
-			}
+		button:hover {
+			background: #0e70a4;
+		}
 
-			#range {
-				-webkit-appearance: none;
-				appearance: none;
-				background: #1fa3ec;
-				outline: none;
-				border-radius: 0.6rem;
-				height: 24px;
-				width: 60%;
-				margin: 0;
-			}
+		#stop {
+			background: #d43535;
+		}
 
-			#range::-webkit-slider-thumb {
-				-webkit-appearance: none;
-				appearance: none;
-				width: 18px;
-				height: 40px;
-				background: #1fa3ec;
-				border: 2px solid black;
-				border-radius: 0.4rem;
-			}
+		#stop:hover {
+			background: #931f1f;
+		}
 
-			#range::-webkit-slider-thumb:hover {
-				background: #0e70a4;
-			}
+		#range {
+			-webkit-appearance: none;
+			appearance: none;
+			background: #1fa3ec;
+			outline: none;
+			border-radius: 0.6rem;
+			height: 24px;
+			width: 60%;
+			margin: 0;
+		}
 
-			.triangle {
-				font-size: 2em;
-			}
+		#range::-webkit-slider-thumb {
+			-webkit-appearance: none;
+			appearance: none;
+			width: 18px;
+			height: 40px;
+			background: #1fa3ec;
+			border: 2px solid black;
+			border-radius: 0.4rem;
+		}
 
-			footer {
-				font-size: 11px;
-				margin: 5px 30px;
-			}
-		</style>
+		#range::-webkit-slider-thumb:hover {
+			background: #0e70a4;
+		}
 
-		<script>
-			$(() => {
-				let changeTimer;
-				readStatus();
+		.triangle {
+			font-size: 2em;
+		}
 
-				$("#manualUp, #open").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					$("#range").prop("disabled", true);
-					$("#range").css("background", "#931f1f");
-					$.ajax({
-						type: "POST",
-						url: "moveup"
-					});
-					changeTimer = setInterval(readStatus, 500);
+		footer {
+			font-size: 11px;
+			margin: 5px 30px;
+		}
+	</style>
+
+	<script>
+		$(() => {
+			let changeTimer;
+			readStatus();
+
+			$("#manualUp, #open").bind("mousedown touchstart", () => {
+				$("#stop").trigger("mousedown");
+				$("#range").prop("disabled", true);
+				$("#range").css("background", "#931f1f");
+				$.ajax({
+					type: "POST",
+					url: "moveup"
 				});
-
-				$("#manualDn, #close").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					$("#range").prop("disabled", true);
-					$("#range").css("background", "#931f1f");
-					$.ajax({
-						type: "POST",
-						url: "movedown"
-					});
-					changeTimer = setInterval(readStatus, 500);
-				});
-
-				$("#manualUp, #manualDn").bind("mouseup touchend", () => {
-					$("#stop").trigger("mousedown");
-				});
-
-				$("#range").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					clearInterval(changeTimer);
-				});
-
-				$("#range").change(() => {
-					$("#stop").trigger("mousedown");
-					$.ajax({
-						type: "POST",
-						url: "moveto",
-						data: {
-							val: $("#range").val() * 10
-						}
-					});
-					changeTimer = setInterval(readStatus, 500);
-				});
-
-				$("#stop").bind("mousedown touchstart", () => {
-					$("#range").prop("disabled", false);
-					$("#range").css("background", "#1fa3ec");
-					clearInterval(changeTimer);
-					$.ajax({
-						type: "POST",
-						url: "stop"
-					});
-					readStatus();
-				});
-
-				function readStatus() {
-					$.ajax({
-						type: "POST",
-						url: "status",
-						success: answer => {
-							$("#range").val(answer.blindsPosition / 10);
-						}
-					});
-				}
+				changeTimer = setInterval(readStatus, 500);
 			});
-		</script>
-	</head>
 
-	<body>
-		<div id="container">
-			<h3>Roller Blind Module</h3>
-			<h2>RollerBlind01</h2>
+			$("#manualDn, #close").bind("mousedown touchstart", () => {
+				$("#stop").trigger("mousedown");
+				$("#range").prop("disabled", true);
+				$("#range").css("background", "#931f1f");
+				$.ajax({
+					type: "POST",
+					url: "movedown"
+				});
+				changeTimer = setInterval(readStatus, 500);
+			});
 
-			<table>
-				<tbody>
-					<tr>
-						<td style="width:35%"><button id="manualUp">Man. UP</button></td>
-						<td style="width:65%"><button id="open">Open</button></td>
-					</tr>
-					<tr>
-						<td style="width:35%"><button id="manualDn">Man. DN</button></td>
-						<td style="width:65%">
-							<span class="triangle">&#9660;</span>
-							<input type="range" id="range" min="0" max="10" />
-							<span class="triangle" style="color: #FFE000">&#9650;</span>
-						</td>
-					</tr>
-					<tr>
-						<td style="width:35%"><button id="stop">Stop</button></td>
-						<td style="width:65%"><button id="close">Close</button></td>
-					</tr>
-				</tbody>
-			</table>
+			$("#manualUp, #manualDn").bind("mouseup touchend", () => {
+				$("#stop").trigger("mousedown");
+			});
 
-			<footer>
-				<hr />
-				<div style="float: left">
-					<a href="config.html" style="text-decoration: none;">Config</a>
-				</div>
-				<div style="text-align: right;  color: #aaa;">
-					Home automation for MajorDoMo
-				</div>
-			</footer>
-		</div>
-	</body>
+			$("#range").bind("mousedown touchstart", () => {
+				$("#stop").trigger("mousedown");
+				clearInterval(changeTimer);
+			});
+
+			$("#range").change(() => {
+				$("#stop").trigger("mousedown");
+				$.ajax({
+					type: "POST",
+					url: "moveto",
+					data: {
+						val: $("#range").val() * 10
+					}
+				});
+				changeTimer = setInterval(readStatus, 500);
+			});
+
+			$("#stop").bind("mousedown touchstart", () => {
+				$("#range").prop("disabled", false);
+				$("#range").css("background", "#1fa3ec");
+				clearInterval(changeTimer);
+				$.ajax({
+					type: "POST",
+					url: "stop"
+				});
+				readStatus();
+			});
+
+			function readStatus() {
+				$.ajax({
+					type: "POST",
+					url: "status",
+					success: answer => {
+						$("#range").val(answer.blindsPosition / 10);
+					}
+				});
+			}
+		});
+	</script>
+</head>
+
+<body>
+	<div id="container">
+		<h3>Roller Blind Module</h3>
+		<h2>RollerBlind01</h2>
+
+		<table>
+			<tbody>
+				<tr>
+					<td style="width:35%"><button id="manualUp">Man. UP</button></td>
+					<td style="width:65%"><button id="open">Open</button></td>
+				</tr>
+				<tr>
+					<td style="width:35%"><button id="manualDn">Man. DN</button></td>
+					<td style="width:65%">
+						<span class="triangle">&#9660;</span>
+						<input type="range" id="range" min="0" max="10" />
+						<span class="triangle" style="color: #FFE000">&#9650;</span>
+					</td>
+				</tr>
+				<tr>
+					<td style="width:35%"><button id="stop">Stop</button></td>
+					<td style="width:65%"><button id="close">Close</button></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<footer>
+			<hr />
+			<div style="float: left">
+				<a href="config.html" style="text-decoration: none;">Config</a>
+			</div>
+			<div style="text-align: right;  color: #aaa;">
+				Home automation for MajorDoMo
+			</div>
+		</footer>
+	</div>
+</body>
+
 </html>
