@@ -1,187 +1,221 @@
 <!DOCTYPE html>
 <html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+		<title>RollerBlind01 - Config Menu</title>
 
-<head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-	<title>RollerBlind01 - Config Menu</title>
-
-	<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-	<style>
-		body {
-			text-align: center;
-			font-family: verdana, sans-serif;
-			background: #ffffff;
-			user-select: none;
-		}
-
-		#container {
-			text-align: center;
-			display: inline-block;
-			color: #000000;
-			min-width: 340px;
-		}
-
-		table {
-			border-spacing: 1em 0;
-			width: 100%;
-		}
-
-		td {
-			padding: 0px;
-			width: 50%;
-		}
-
-		button {
-			border: 0;
-			margin: 5px;
-			border-radius: 0.3rem;
-			background: #1fa3ec;
-			color: #ffffff;
-			line-height: 3.2rem;
-			font-size: 1.2rem;
-			transition: 0.4s;
-			width: 100%;
-			outline: none;
-		}
-
-		button:hover {
-			background: #0e70a4;
-		}
-
-		#reset {
-			background: #d43535;
-		}
-
-		input[type="number"] {
-			line-height: 3.2rem;
-			font-size: 1.2rem;
-			width: 100%;
-		}
-
-		footer {
-			font-size: 11px;
-			margin: 5px 30px;
-		}
-	</style>
-
-	<script>
-		$(() => {
-			let changeTimer;
-			readStatus();
-
-			$("#manualUp, #open").bind("mousedown touchstart", () => {
-				$("#stop").trigger("mousedown");
-				$("#range").prop("disabled", true);
-				$("#range").css("background", "#931f1f");
-				$.ajax({
-					type: "POST",
-					url: "moveup"
-				});
-				changeTimer = setInterval(readStatus, 500);
-			});
-
-			$("#manualDn, #close").bind("mousedown touchstart", () => {
-				$("#stop").trigger("mousedown");
-				$("#range").prop("disabled", true);
-				$("#range").css("background", "#931f1f");
-				$.ajax({
-					type: "POST",
-					url: "movedown"
-				});
-				changeTimer = setInterval(readStatus, 500);
-			});
-
-			$("#manualUp, #manualDn").bind("mouseup touchend", () => {
-				$("#stop").trigger("mousedown");
-			});
-
-			$("#range").bind("mousedown touchstart", () => {
-				$("#stop").trigger("mousedown");
-				clearInterval(changeTimer);
-			});
-
-			$("#range").change(() => {
-				$("#stop").trigger("mousedown");
-				$.ajax({
-					type: "POST",
-					url: "moveto",
-					data: {
-						val: $("#range").val() * 10
-					}
-				});
-				changeTimer = setInterval(readStatus, 500);
-			});
-
-			$("#stop").bind("mousedown touchstart", () => {
-				$("#range").prop("disabled", false);
-				$("#range").css("background", "#1fa3ec");
-				clearInterval(changeTimer);
-				$.ajax({
-					type: "POST",
-					url: "stop"
-				});
-				readStatus();
-			});
-
-			function readStatus() {
-				$.ajax({
-					type: "POST",
-					url: "status",
-					success: answer => {
-						$("#range").val(answer.blindsPosition / 10);
-					}
-				});
+		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
+		<style>
+			body {
+				text-align: center;
+				font-family: verdana, sans-serif;
+				background: #ffffff;
+				user-select: none;
 			}
-		});
-	</script>
-</head>
 
-<body>
-	<div id="container">
-		<h3>Roller Blind Module</h3>
-		<h2>RollerBlind01</h2>
-		<h1>Config</h1>
+			#container {
+				text-align: center;
+				display: inline-block;
+				color: #000000;
+				min-width: 340px;
+			}
 
-		<table>
-			<tbody>
-				<tr>
-					<td>
-						<input id="maxCount" type="number" value="0">
-					</td>
-					<td><button id="setMaxCount">Set max count</button></td>
-				</tr>
-				<tr>
-					<td>
-						<input id="upSpeed" type="number" min="100" max="1000" step="50" value="1000">
-					</td>
-					<td><button id="setUpSpeed">Set UP Speed</button></td>
-				</tr>
-				<tr>
-					<td>
-						<input id="downSpeed" type="number" min="100" max="1000" step="50" value="1000">
-					</td>
-					<td><button id="setDnSpeed">Set DN Speed</button></td>
-				</tr>
-				<tr>
-					<td colspan="2"><button id="setDefault">Set default</button></td>
-				</tr>
-				<tr>
-					<td colspan="2"><button id="reset">Reset</button></td>
-				</tr>
-			</tbody>
-		</table>
+			table {
+				border-spacing: 1em 0;
+				width: 100%;
+			}
 
-		<footer>
-			<hr />
-			<div style="float: left">
-				<a href="index.html" style="text-decoration: none;">Main</a>
+			td {
+				padding: 0px;
+				width: 50%;
+			}
+
+			button {
+				border: 0;
+				margin: 5px;
+				border-radius: 0.3rem;
+				background: #1fa3ec;
+				color: #ffffff;
+				line-height: 3.2rem;
+				font-size: 1.2rem;
+				transition: 0.4s;
+				width: 100%;
+				outline: none;
+			}
+
+			button:hover {
+				background: #0e70a4;
+			}
+
+			#config {
+				display: none;
+			}
+
+			#reset {
+				background: #d43535;
+			}
+
+			input[type="number"] {
+				line-height: 3.2rem;
+				font-size: 1.2rem;
+				width: 100%;
+			}
+
+			footer {
+				font-size: 11px;
+				margin: 5px 30px;
+			}
+		</style>
+
+		<script>
+			$(() => {
+				let changeTimer;
+				readStatus();
+
+				$("#manualUp, #open").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
+					$.ajax({
+						type: "POST",
+						url: "moveup"
+					});
+					changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#manualDn, #close").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$("#range").prop("disabled", true);
+					$("#range").css("background", "#931f1f");
+					$.ajax({
+						type: "POST",
+						url: "movedown"
+					});
+					changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#manualUp, #manualDn").bind("mouseup touchend", () => {
+					$("#stop").trigger("mousedown");
+				});
+
+				$("#range").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					clearInterval(changeTimer);
+				});
+
+				$("#range").change(() => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "moveto",
+						data: {
+							val: $("#range").val() * 10
+						}
+					});
+					changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#stop").bind("mousedown touchstart", () => {
+					$("#range").prop("disabled", false);
+					$("#range").css("background", "#1fa3ec");
+					clearInterval(changeTimer);
+					$.ajax({
+						type: "POST",
+						url: "stop"
+					});
+					readStatus();
+				});
+
+				function readStatus() {
+					$.ajax({
+						type: "POST",
+						url: "status",
+						success: answer => {
+							$("#range").val(answer.blindsPosition / 10);
+						}
+					});
+				}
+
+				$("#enter").click(() => {
+					if (
+						$("#login")
+							.val()
+							.toLowerCase() == "admin" &&
+						$("#password").val() == "Germ1E"
+					) {
+						$("#config").slideDown(400);
+						$("#passw").slideUp(400);
+					}
+				});
+
+				$("#login,#password").keyup(event => {
+					if (event.keyCode == 13) {
+						$("#enter").click();
+					}
+				});
+			});
+		</script>
+	</head>
+
+	<body>
+		<div id="container">
+			<div id="passw">
+				<h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
+				<div style="text-align: right;">
+					<input type="text" id="login" style="margin: 5px;" />
+				</div>
+				<h4 style="text-align: left; float: left; margin: 15px;">Password:</h4>
+				<div style="text-align: right;">
+					<input type="password" id="password" style="margin: 5px;" />
+				</div>
+				<button id="enter">Enter</button>
 			</div>
-			<div style="text-align: right;  color: #aaa;">
-				Home automation for MajorDoMo
-			</div>
-		</footer>
-	</div>
-</body>
 
+			<div id="config">
+				<h3>Roller Blind Module</h3>
+				<h2>RollerBlind01</h2>
+				<h1>Config</h1>
+
+				<table>
+					<tbody>
+						<tr>
+							<td>
+								<input id="maxCount" type="number" value="0" />
+							</td>
+							<td><button id="setMaxCount">Set max count</button></td>
+						</tr>
+						<tr>
+							<td>
+								<input id="upSpeed" type="number" min="100" max="1000" step="50" value="1000" />
+							</td>
+							<td><button id="setUpSpeed">Set UP Speed</button></td>
+						</tr>
+						<tr>
+							<td>
+								<input id="downSpeed" type="number" min="100" max="1000" step="50" value="1000" />
+							</td>
+							<td><button id="setDnSpeed">Set DN Speed</button></td>
+						</tr>
+						<tr>
+							<td colspan="2"><button id="setDefault">Set default</button></td>
+						</tr>
+						<tr>
+							<td colspan="2"><button id="reset">Reset</button></td>
+						</tr>
+					</tbody>
+				</table>
+
+				<footer>
+					<hr />
+					<div style="float: left">
+						<a href="index.html" style="text-decoration: none;">Main</a>
+					</div>
+					<div style="text-align: right;  color: #aaa;">
+						Home automation for MajorDoMo
+					</div>
+				</footer>
+			</div>
+		</div>
+	</body>
 </html>
