@@ -460,6 +460,18 @@ void setup()
     server.send(200, "text/plain", "moveDown:OK!");
   });
 
+  server.on("/login", []() {
+    if (server.hasArg("login") && server.hasArg("pass"))
+    {
+      if (server.arg("login").toLowerCase() == "admin" && server.arg("pass") == "Germ1E")
+      {
+        server.send(200, "text/plain", "Auth OK");
+        return;
+      }
+    }
+    server.send(200, "text/plain", "Auth failed");
+  });
+
   server.on("/setmaxcount", []() {
     if (server.hasArg("val"))
     {
