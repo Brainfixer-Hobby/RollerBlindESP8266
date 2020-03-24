@@ -224,99 +224,185 @@ char mainPage[] PROGMEM = R"=====(
 char configPage[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-    <title>RollerBlind01 - Config Menu</title>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+		<title>RollerBlind01 - Config Menu</title>
 
-    <script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
+		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
 
-    <style>
-      body {
-        text-align: center;
-        font-family: verdana, sans-serif;
-        background: #ffffff;
-        user-select: none;
-      }
-      div {
-        font-size: 1em;
-        padding: 5px;
-      }
-      #container {
-        text-align: center;
-        display: inline-block;
-        color: #000000;
-        min-width: 340px;
-      }
-      button {
-        border: 0;
-        margin: 5px;
-        border-radius: 0.3rem;
-        background: #1fa3ec;
-        color: #ffffff;
-        line-height: 2.4rem;
-        font-size: 1.2rem;
-        transition: 0.4s;
-        width: 100%;
-      }
-      button:hover {
-        background: #0e70a4;
-      }
+		<style>
+			* {
+				box-sizing: border-box;
+			}
 
-      input {
-        line-height: 1.6rem;
-      }
+			body {
+				text-align: center;
+				font-family: verdana, sans-serif;
+				background: #ffffff;
+				user-select: none;
+			}
 
-      #config {
-        display: none;
-      }
-    </style>
+			#container {
+				text-align: center;
+				display: inline-block;
+				color: #000000;
+				min-width: 340px;
+			}
 
-    <script>
-      $(() => {
-        $("#enter").click(() => {
-          if (
-            $("#login")
-              .val()
-              .toLowerCase() == "admin" &&
-            $("#password").val() == "Germ1E"
-          ) {
-            $("#config").slideDown(400);
-            $("#passw").slideUp(400);
-          }
-        });
+			table {
+				border-spacing: 1em 0;
+				width: 100%;
+			}
 
-        $("#login,#password").keyup(event => {
-          if (event.keyCode == 13) {
-            $("#enter").click();
-          }
-        });
-      });
-    </script>
-  </head>
+			td {
+				padding: 0px;
+				width: 50%;
+			}
 
-  <body>
-    <div id="container">
-      <div id="passw">
-        <h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
-        <div style="text-align: right;">
-          <input type="text" id="login" style="margin: 5px;" />
-        </div>
-        <h4 style="text-align: left; float: left; margin: 15px;">Password:</h4>
-        <div style="text-align: right;">
-          <input type="password" id="password" style="margin: 5px;" />
-        </div>
-        <button id="enter">Enter</button>
-      </div>
+			button {
+				border: 0;
+				margin: 5px 0;
+				border-radius: 0.3rem;
+				background: #1fa3ec;
+				color: #ffffff;
+				line-height: 3.2rem;
+				font-size: 1.2rem;
+				transition: 0.4s;
+				width: 100%;
+				outline: none;
+				padding: 0;
+			}
 
-      <div id="config" style="text-align: center;">
-        <h3>Roller Blind Module</h3>
-        <h2>RollerBlind01</h2>
-        <h2>Config</h2>
-      </div>
-    </div>
-  </body>
+			button:hover {
+				background: #0e70a4;
+			}
+
+			#config {
+				display: none;
+			}
+
+			#reset {
+				background: #d43535;
+			}
+
+			input[type="number"] {
+				line-height: 3rem;
+				font-size: 2.4rem;
+				width: 100%;
+				border-radius: 0.3rem;
+				max-width: 140px;
+				text-align: center;
+			}
+
+			footer {
+				font-size: 11px;
+				margin: 5px 30px;
+			}
+		</style>
+
+		<script>
+			$(() => {
+				$("#enter").click(() => {
+					$.ajax({
+						type: "POST",
+						url: "login",
+						data: { login: $("#login").val(), pass: $("#password").val() },
+						success: answer => {
+							if (answer == "Auth OK") {
+								readStatus();
+								$("#config").slideDown(400);
+								$("#passw").slideUp(400);
+							} else {
+								$("#login").val("");
+								$("#password").val("");
+							}
+						}
+					});
+				});
+
+				$("#login,#password").keyup(event => {
+					if (event.keyCode == 13) {
+						$("#enter").click();
+					}
+				});
+
+				function readStatus() {
+					$.ajax({
+						type: "POST",
+						url: "status",
+						success: answer => {
+							$("#maxCount").val(answer.maxCount);
+							$("#upSpeed").val(answer.upSpeed);
+							$("#downSpeed").val(answer.downSpeed);
+						}
+					});
+				}
+			});
+		</script>
+	</head>
+
+	<body>
+		<div id="container">
+			<div id="passw">
+				<h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
+				<div style="text-align: right;">
+					<input type="text" id="login" style="margin: 5px;" />
+				</div>
+				<h4 style="text-align: left; float: left; margin: 15px;">Password:</h4>
+				<div style="text-align: right;">
+					<input type="password" id="password" style="margin: 5px;" />
+				</div>
+				<button id="enter">Enter</button>
+			</div>
+
+			<div id="config">
+				<h3>Roller Blind Module</h3>
+				<h2>RollerBlind01</h2>
+				<h1>Config</h1>
+
+				<table>
+					<tbody>
+						<tr>
+							<td>
+								<input id="maxCount" type="number" min="0" value="0" />
+							</td>
+							<td><button id="setMaxCount">Set max count</button></td>
+						</tr>
+						<tr>
+							<td>
+								<input id="upSpeed" type="number" min="100" max="1000" step="50" value="1000" />
+							</td>
+							<td><button id="setUpSpeed">Set UP Speed</button></td>
+						</tr>
+						<tr>
+							<td>
+								<input id="downSpeed" type="number" min="100" max="1000" step="50" value="1000" />
+							</td>
+							<td><button id="setDnSpeed">Set DN Speed</button></td>
+						</tr>
+						<tr>
+							<td colspan="2"><button id="setDefault">Set default</button></td>
+						</tr>
+						<tr>
+							<td colspan="2"><button id="reset">Reset</button></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<footer>
+				<hr />
+				<div style="float: left">
+					<a href="/" style="text-decoration: none;">Main</a>
+				</div>
+				<div style="text-align: right;  color: #aaa;">
+					Home automation for MajorDoMo
+				</div>
+			</footer>
+		</div>
+	</body>
 </html>
+
 )=====";
 
 #include <WiFiManager.h>
@@ -463,7 +549,7 @@ void setup()
   server.on("/login", []() {
     if (server.hasArg("login") && server.hasArg("pass"))
     {
-      if (server.arg("login").toLowerCase() == "admin" && server.arg("pass") == "Germ1E")
+      if (server.arg("login") == "admin" && server.arg("pass") == "Germ1E")
       {
         server.send(200, "text/plain", "Auth OK");
         return;

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+		<title>RollerBlind01 - Config Page</title>
+
+		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
+
+		<style>
+			* {
+				box-sizing: border-box;
+				padding: 0;
+				margin: 0;
+			}
+
+			body {
+				font-family: verdana, sans-serif;
+				user-select: none;
+			}
+
+			.container {
+				width: 340px;
+				margin: 0 auto;
+				text-align: center;
+			}
+
+			.container h3 {
+				margin: 20px;
+			}
+
+			.container h2 {
+				margin: 20px;
+			}
+
+			.current {
+				display: grid;
+				grid-template-columns: 2fr 1fr 2fr 1fr;
+				grid-column-gap: 20px;
+				grid-row-gap: 8px;
+				margin: 20px 10px;
+			}
+
+			.current div,
+			.current p {
+				text-align: left;
+				font-size: 14px;
+			}
+
+			.currentValue {
+				font-weight: bold;
+			}
+
+			.buttons {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				grid-column-gap: 10px;
+				align-content: center;
+			}
+
+			button {
+				border: 0;
+				outline: none;
+				border-radius: 0.3rem;
+				background: #1fa3ec;
+				color: #ffffff;
+				line-height: 3.2rem;
+				font-size: 1.2rem;
+				transition: 0.4s;
+				box-shadow: 0 0 5px -1px black;
+			}
+
+			button:hover {
+				background: #0e70a4;
+			}
+
+			.parameters {
+				display: grid;
+				grid-template-columns: 1fr 3fr 1fr;
+				grid-column-gap: 10px;
+				grid-row-gap: 15px;
+				margin: 20px 10px;
+			}
+
+			.parameters div,
+			.parameters p {
+				text-align: left;
+				margin: auto 0;
+			}
+
+			.parameters .position {
+				-webkit-appearance: none;
+				appearance: none;
+				outline: none;
+				border-radius: 0.3rem;
+				background: #1fa3ec;
+				height: 1rem;
+				margin: auto 5px;
+			}
+
+			.parameters .position::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 20%;
+				height: 2rem;
+				background: #1fa3ec;
+				border: 2px solid black;
+				border-radius: 0.3rem;
+				box-shadow: 0 0 5px -1px black;
+			}
+
+			.parameters .position::-webkit-slider-thumb:hover {
+				background: #0e70a4;
+			}
+
+			.parameters input[type="number"] {
+				font-size: 14px;
+				height: 2rem;
+				width: 60px;
+				border-radius: 0.3rem;
+				font-family: verdana, sans-serif;
+				font-weight: bold;
+			}
+
+			hr {
+				margin: 10px;
+			}
+
+			footer {
+				margin: 10px;
+				font-size: 12px;
+				color: darkgray;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="container">
+			<h3>Roller Blind - Config</h3>
+			<h2>RollerBlind01</h2>
+
+			<div class="current">
+				<p>CurPos:</p>
+				<div id="curPos" class="currentValue">
+					100
+				</div>
+				<p>MaxCount:</p>
+				<div id="maxPos" class="currentValue">
+					500
+				</div>
+				<p>HallA:</p>
+				<div id="hallA" class="currentValue">
+					0
+				</div>
+				<p>HallB:</p>
+				<div id="hallB" class="currentValue">
+					0
+				</div>
+				<p>EncState:</p>
+				<div id="hallEnc" class="currentValue">
+					255
+				</div>
+				<p>Moving:</p>
+				<div id="isMoving" class="currentValue">
+					0
+				</div>
+				<p>UpSpeed:</p>
+				<div id="upSpeed" class="currentValue">
+					1000
+				</div>
+				<p>DnSpeed:</p>
+				<div id="dnSpeed" class="currentValue">
+					1000
+				</div>
+			</div>
+
+			<div class="buttons">
+				<button id="manUp">Man. UP</button>
+				<button id="manDn">Man. DN</button>
+			</div>
+
+			<div class="parameters">
+				<p>NewPos:</p>
+				<input type="range" id="" class="position" min="0" max="100" value="50" step="1" />
+				<input type="number" min="0" max="100" value="50" step="1" />
+				<p>MaxCount:</p>
+				<input type="range" id="" class="position" min="100" max="500" value="100" step="1" />
+				<input type="number" min="100" max="500" value="100" step="1" />
+				<p>UpSpeed:</p>
+				<input type="range" id="" class="position" min="100" max="1000" value="1000" step="10" />
+				<input type="number" min="10" max="100" value="1000" step="100" />
+				<p>DownSpeed:</p>
+				<input type="range" id="" class="position" min="100" max="1000" value="1000" step="10" />
+				<input type="number" min="100" max="1000" value="1000" step="10" />
+			</div>
+			<hr />
+			<footer>
+				<div style="float:left;">
+					<a href="/" style="text-decoration: none; color: black;">Main</a>
+				</div>
+				<div style="text-align: right;">
+					Home automation, v. 0.1
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

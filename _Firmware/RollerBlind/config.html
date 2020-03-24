@@ -6,7 +6,6 @@
 		<title>RollerBlind01 - Config Menu</title>
 
 		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-		<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
 		<style>
 			* {
@@ -80,70 +79,6 @@
 
 		<script>
 			$(() => {
-				$("#manualUp, #open").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					$("#range").prop("disabled", true);
-					$("#range").css("background", "#931f1f");
-					$.ajax({
-						type: "POST",
-						url: "moveup"
-					});
-					changeTimer = setInterval(readStatus, 500);
-				});
-
-				$("#manualDn, #close").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					$("#range").prop("disabled", true);
-					$("#range").css("background", "#931f1f");
-					$.ajax({
-						type: "POST",
-						url: "movedown"
-					});
-					changeTimer = setInterval(readStatus, 500);
-				});
-
-				$("#manualUp, #manualDn").bind("mouseup touchend", () => {
-					$("#stop").trigger("mousedown");
-				});
-
-				$("#range").bind("mousedown touchstart", () => {
-					$("#stop").trigger("mousedown");
-					clearInterval(changeTimer);
-				});
-
-				$("#range").change(() => {
-					$("#stop").trigger("mousedown");
-					$.ajax({
-						type: "POST",
-						url: "moveto",
-						data: {
-							val: $("#range").val() * 10
-						}
-					});
-					changeTimer = setInterval(readStatus, 500);
-				});
-
-				$("#stop").bind("mousedown touchstart", () => {
-					$("#range").prop("disabled", false);
-					$("#range").css("background", "#1fa3ec");
-					clearInterval(changeTimer);
-					$.ajax({
-						type: "POST",
-						url: "stop"
-					});
-					readStatus();
-				});
-
-				function readStatus() {
-					$.ajax({
-						type: "POST",
-						url: "status",
-						success: answer => {
-							$("#range").val(answer.blindsPosition / 10);
-						}
-					});
-				}
-
 				$("#enter").click(() => {
 					$.ajax({
 						type: "POST",
@@ -151,6 +86,7 @@
 						data: { login: $("#login").val(), pass: $("#password").val() },
 						success: answer => {
 							if (answer == "Auth OK") {
+								readStatus();
 								$("#config").slideDown(400);
 								$("#passw").slideUp(400);
 							} else {
@@ -166,6 +102,18 @@
 						$("#enter").click();
 					}
 				});
+
+				function readStatus() {
+					$.ajax({
+						type: "POST",
+						url: "status",
+						success: answer => {
+							$("#maxCount").val(answer.maxCount);
+							$("#upSpeed").val(answer.upSpeed);
+							$("#downSpeed").val(answer.downSpeed);
+						}
+					});
+				}
 			});
 		</script>
 	</head>
@@ -217,17 +165,16 @@
 						</tr>
 					</tbody>
 				</table>
-
-				<footer>
-					<hr />
-					<div style="float: left">
-						<a href="index.html" style="text-decoration: none;">Main</a>
-					</div>
-					<div style="text-align: right;  color: #aaa;">
-						Home automation for MajorDoMo
-					</div>
-				</footer>
 			</div>
+			<footer>
+				<hr />
+				<div style="float: left">
+					<a href="/" style="text-decoration: none;">Main</a>
+				</div>
+				<div style="text-align: right;  color: #aaa;">
+					Home automation for MajorDoMo
+				</div>
+			</footer>
 		</div>
 	</body>
 </html>
