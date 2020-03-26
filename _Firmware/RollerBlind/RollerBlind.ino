@@ -9,418 +9,13 @@ const char *mqtt_server = "192.168.1.1";
 #define HALL_A 5
 #define HALL_B 4
 
-char mainPage[] PROGMEM = R"=====(
-  
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-    <title>RollerBlind01 - Main Page</title>
-
-    <script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-
-    <style>
-      * {
-        box-sizing: border-box;
-        padding: 0;
-        margin: 0;
-      }
-
-      body {
-        font-family: verdana, sans-serif;
-        user-select: none;
-      }
-
-      .container {
-        width: 340px;
-        margin: 0 auto;
-        text-align: center;
-      }
-
-      h3 {
-        margin: 20px;
-      }
-
-      h2 {
-        margin: 20px;
-      }
-
-      .controls {
-        display: grid;
-        grid-template-columns: 1.5fr 2.5fr;
-        grid-column-gap: 10px;
-        grid-row-gap: 10px;
-        align-content: center;
-      }
-
-      button {
-        border: 0;
-        outline: none;
-        border-radius: 0.3rem;
-        background: #1fa3ec;
-        color: #ffffff;
-        line-height: 3.2rem;
-        font-size: 1.2rem;
-        transition: 0.4s;
-        box-shadow: 0 0 5px -1px black;
-      }
-
-      button:hover {
-        background: #0e70a4;
-      }
-
-      #stop {
-        background: #d43535;
-      }
-
-      #stop:hover {
-        background: #931f1f;
-      }
-
-      .range {
-        display: flex;
-      }
-
-      .triangle {
-        font-size: 1.5rem;
-        margin: auto 0;
-      }
-
-      #position {
-        -webkit-appearance: none;
-        appearance: none;
-        outline: none;
-        border-radius: 0.3rem;
-        background: #1fa3ec;
-        height: 2rem;
-        margin: auto 5px;
-        width: 100%;
-      }
-
-      #position::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 20%;
-        height: 3rem;
-        background: #1fa3ec;
-        border: 2px solid black;
-        border-radius: 0.3rem;
-        box-shadow: 0 0 5px -1px black;
-      }
-
-      #position::-webkit-slider-thumb:hover {
-        background: #0e70a4;
-      }
-
-      hr {
-        margin: 10px;
-      }
-
-      footer {
-        margin: 10px;
-        font-size: 12px;
-        color: darkgray;
-      }
-    </style>
-
-    <script>
-      $(() => {
-        let changeTimer;
-        readStatus();
-
-        $("#manualUp, #open").bind("mousedown touchstart", () => {
-          $("#stop").trigger("mousedown");
-          $.ajax({
-            type: "POST",
-            url: "moveup"
-          });
-          changeTimer = setInterval(readStatus, 500);
-        });
-
-        $("#manualDn, #close").bind("mousedown touchstart", () => {
-          $("#stop").trigger("mousedown");
-          $.ajax({
-            type: "POST",
-            url: "movedown"
-          });
-          changeTimer = setInterval(readStatus, 500);
-        });
-
-        $("#manualUp, #manualDn").bind("mouseup touchend", () => {
-          $("#stop").trigger("mousedown");
-        });
-
-        $("#position").bind("mousedown touchstart", () => {
-          $("#stop").trigger("mousedown");
-          clearInterval(changeTimer);
-        });
-
-        $("#position").change(() => {
-          $("#stop").trigger("mousedown");
-          $.ajax({
-            type: "POST",
-            url: "moveto",
-            data: {
-              val: $("#position").val()
-            }
-          });
-          changeTimer = setInterval(readStatus, 500);
-        });
-
-        $("#stop").bind("mousedown touchstart", () => {
-          clearInterval(changeTimer);
-          $.ajax({
-            type: "POST",
-            url: "stop"
-          });
-          readStatus();
-        });
-
-        function readStatus() {
-          $.ajax({
-            type: "POST",
-            url: "status",
-            success: answer => {
-              $("#position").val(answer.blindsPosition);
-              if (answer.isMoving != 0) {
-                $("#position").prop("disabled", true);
-                $("#position").css("background", "#931f1f");
-              } else {
-                $("#position").prop("disabled", false);
-                $("#position").css("background", "#1fa3ec");
-              }
-            }
-          });
-        }
-      });
-    </script>
-  </head>
-
-  <body>
-    <div class="container">
-      <h3>Roller Blind - Main</h3>
-      <h2>RollerBlind01</h2>
-
-      <div class="controls">
-        <button id="manualUp">Man. UP</button>
-        <button id="open">Open</button>
-        <button id="manualDn">Man. DN</button>
-        <div class="range">
-          <span class="triangle">&#9660;</span>
-          <input type="range" id="position" min="0" max="100" value="5" step="10" />
-          <span class="triangle" style="color:#FFFE00">&#9650;</span>
-        </div>
-        <button id="stop">Stop</button>
-        <button id="close">Close</button>
-      </div>
-
-      <hr />
-      <footer>
-        <div style="float:left;">
-          <a href="config.html" style="text-decoration: none; color: black;">Config</a>
-        </div>
-        <div style="text-align: right;">
-          Home automation, v. 0.1
-        </div>
-      </footer>
-    </div>
-  </body>
-</html>
-
-
-)=====";
-
-char configPage[] PROGMEM = R"=====(
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-		<title>RollerBlind01 - Config Menu</title>
-
-		<script src="http://192.168.1.1/jquery-3.4.1.min.js"></script>
-
-		<style>
-			* {
-				box-sizing: border-box;
-			}
-
-			body {
-				text-align: center;
-				font-family: verdana, sans-serif;
-				background: #ffffff;
-				user-select: none;
-			}
-
-			#container {
-				text-align: center;
-				display: inline-block;
-				color: #000000;
-				min-width: 340px;
-			}
-
-			table {
-				border-spacing: 1em 0;
-				width: 100%;
-			}
-
-			td {
-				padding: 0px;
-				width: 50%;
-			}
-
-			button {
-				border: 0;
-				margin: 5px 0;
-				border-radius: 0.3rem;
-				background: #1fa3ec;
-				color: #ffffff;
-				line-height: 3.2rem;
-				font-size: 1.2rem;
-				transition: 0.4s;
-				width: 100%;
-				outline: none;
-				padding: 0;
-			}
-
-			button:hover {
-				background: #0e70a4;
-			}
-
-			#config {
-				display: none;
-			}
-
-			#reset {
-				background: #d43535;
-			}
-
-			input[type="number"] {
-				line-height: 3rem;
-				font-size: 2.4rem;
-				width: 100%;
-				border-radius: 0.3rem;
-				max-width: 140px;
-				text-align: center;
-			}
-
-			footer {
-				font-size: 11px;
-				margin: 5px 30px;
-			}
-		</style>
-
-		<script>
-			$(() => {
-				$("#enter").click(() => {
-					$.ajax({
-						type: "POST",
-						url: "login",
-						data: { login: $("#login").val(), pass: $("#password").val() },
-						success: answer => {
-							if (answer == "Auth OK") {
-								readStatus();
-								$("#config").slideDown(400);
-								$("#passw").slideUp(400);
-							} else {
-								$("#login").val("");
-								$("#password").val("");
-							}
-						}
-					});
-				});
-
-				$("#login,#password").keyup(event => {
-					if (event.keyCode == 13) {
-						$("#enter").click();
-					}
-				});
-
-				function readStatus() {
-					$.ajax({
-						type: "POST",
-						url: "status",
-						success: answer => {
-							$("#maxCount").val(answer.maxCount);
-							$("#upSpeed").val(answer.upSpeed);
-							$("#downSpeed").val(answer.downSpeed);
-						}
-					});
-				}
-			});
-		</script>
-	</head>
-
-	<body>
-		<div id="container">
-			<div id="passw">
-				<h4 style="text-align: left; float: left; margin: 15px;">Login:</h4>
-				<div style="text-align: right;">
-					<input type="text" id="login" style="margin: 5px;" />
-				</div>
-				<h4 style="text-align: left; float: left; margin: 15px;">Password:</h4>
-				<div style="text-align: right;">
-					<input type="password" id="password" style="margin: 5px;" />
-				</div>
-				<button id="enter">Enter</button>
-			</div>
-
-			<div id="config">
-				<h3>Roller Blind Module</h3>
-				<h2>RollerBlind01</h2>
-				<h1>Config</h1>
-
-				<table>
-					<tbody>
-						<tr>
-							<td>
-								<input id="maxCount" type="number" min="0" value="0" />
-							</td>
-							<td><button id="setMaxCount">Set max count</button></td>
-						</tr>
-						<tr>
-							<td>
-								<input id="upSpeed" type="number" min="100" max="1000" step="50" value="1000" />
-							</td>
-							<td><button id="setUpSpeed">Set UP Speed</button></td>
-						</tr>
-						<tr>
-							<td>
-								<input id="downSpeed" type="number" min="100" max="1000" step="50" value="1000" />
-							</td>
-							<td><button id="setDnSpeed">Set DN Speed</button></td>
-						</tr>
-						<tr>
-							<td colspan="2"><button id="setDefault">Set default</button></td>
-						</tr>
-						<tr>
-							<td colspan="2"><button id="reset">Reset</button></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-			<footer>
-				<hr />
-				<div style="float: left">
-					<a href="/" style="text-decoration: none;">Main</a>
-				</div>
-				<div style="text-align: right;  color: #aaa;">
-					Home automation for MajorDoMo
-				</div>
-			</footer>
-		</div>
-	</body>
-</html>
-
-)=====";
-
 #include <WiFiManager.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoOTA.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <EEPROM.h>
+#include <FS.h>
 
 ESP8266WebServer server(80);
 WiFiClient espClient;
@@ -463,8 +58,9 @@ void ICACHE_RAM_ATTR hallEncoder_B();
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial)
-    ;
+  while (!Serial);
+
+  SPIFFS.begin();
 
   EEPROM.begin(512);
   hallEncoder = EEPROM.read(100);
@@ -542,6 +138,7 @@ void setup()
   // Обработка запросов HTTP-сервера
   server.on("/", handleRoot);
   server.on("/config.html", handleConfig);
+  server.on("/jquery.js", handleJQuery);
   server.onNotFound(handleNotFound);
 
   server.on("/moveup", []() {
@@ -910,12 +507,23 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length)
 
 void handleRoot()
 {
-  server.send_P(200, "text/html", mainPage);
+  File file = SPIFFS.open("/index.html", "r");
+  server.streamFile(file, "text/html");
+  file.close();
 }
 
 void handleConfig()
 {
-  server.send_P(200, "text/html", configPage);
+  File file = SPIFFS.open("/config.html", "r");
+  server.streamFile(file, "text/html");
+  file.close();
+}
+
+void handleJQuery()
+{
+  File file = SPIFFS.open("/jquery.js", "r");
+  server.streamFile(file, "application/javascript");
+  file.close();
 }
 
 void handleNotFound()
