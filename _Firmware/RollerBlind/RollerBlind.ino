@@ -64,11 +64,11 @@ void setup()
 
   SPIFFS.begin();
 
-  EEPROM.begin(16);
+  EEPROM.begin(32);
   if (EEPROM.read(12) == 0x11 && EEPROM.read(13) == 0x05 && EEPROM.read(14) == 0x19 && EEPROM.read(15) == 0x76)
   {
     EEPROM.get(0, hallState);
-    EEPROM.get(2, currentPosition );
+    EEPROM.get(2, currentPosition);
     EEPROM.get(4, maxCount);
     EEPROM.get(6, upSpeed);
     EEPROM.get(8, downSpeed);
@@ -108,15 +108,15 @@ void setup()
 
   switch (hallState)
   {
-    case 1:
-      attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
-      break;
-    case 2:
-      attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
-      break;
-    default:
-      attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
-      attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
+  case 1:
+    attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
+    break;
+  case 2:
+    attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
+    break;
+  default:
+    attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
+    attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
   }
 
   // Подключение к точке доступа или запуск втроенной при необходимости - WiFiManager
@@ -170,12 +170,12 @@ void setup()
     }
     else
     {
-      if (currentPosition > 0)
+      newPosition = 0;
+      if (currentPosition > newPosition)
       {
         moveUp();
       }
     }
-
     server.send(200, "text/plain", "moveUp:OK!");
   });
 
@@ -187,7 +187,8 @@ void setup()
     }
     else
     {
-      if (currentPosition < maxCount)
+      newPosition = maxCount;
+      if (currentPosition < newPosition)
       {
         moveDown();
       }
@@ -198,7 +199,7 @@ void setup()
   server.on("/login", []() {
     if (server.hasArg("login") && server.hasArg("pass"))
     {
-      if (server.arg("login") == "admin" && server.arg("pass") == "Germ1E")
+      if (server.arg("login") == "admin" && server.arg("pass") == "1234")
       {
         server.send(200, "text/plain", "Auth OK");
         return;
@@ -356,7 +357,8 @@ void ICACHE_RAM_ATTR hallState_A()
   {
     if (!noLimits)
     {
-      if (currentPosition >= newPosition || currentPosition >= maxCount) {
+      if (currentPosition >= newPosition || currentPosition >= maxCount)
+      {
         stop();
         return;
       }
@@ -367,7 +369,8 @@ void ICACHE_RAM_ATTR hallState_A()
   {
     if (!noLimits)
     {
-      if (currentPosition <= newPosition || currentPosition <= 0) {
+      if (currentPosition <= newPosition || currentPosition <= 0)
+      {
         stop();
         return;
       }
@@ -387,7 +390,8 @@ void ICACHE_RAM_ATTR hallState_B()
   {
     if (!noLimits)
     {
-      if (currentPosition >= newPosition || currentPosition >= maxCount) {
+      if (currentPosition >= newPosition || currentPosition >= maxCount)
+      {
         stop();
         return;
       }
@@ -398,7 +402,8 @@ void ICACHE_RAM_ATTR hallState_B()
   {
     if (!noLimits)
     {
-      if (currentPosition <= newPosition || currentPosition <= 0) {
+      if (currentPosition <= newPosition || currentPosition <= 0)
+      {
         stop();
         return;
       }
