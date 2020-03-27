@@ -23,6 +23,7 @@
 				width: 340px;
 				margin: 0 auto;
 				text-align: center;
+				display: none;
 			}
 
 			h3 {
@@ -122,7 +123,9 @@
 				let changeTimer;
 				readStatus();
 
-				$("#manualUp, #open").bind("mousedown touchstart", () => {
+				$(".container").slideDown(400);
+
+				$("#manualUp").bind("mousedown touchstart", () => {
 					$("#stop").trigger("mousedown");
 					$.ajax({
 						type: "POST",
@@ -131,11 +134,35 @@
 					changeTimer = setInterval(readStatus, 500);
 				});
 
-				$("#manualDn, #close").bind("mousedown touchstart", () => {
+				$("#open").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "moveto",
+						data: {
+							val: "100"
+						}
+					});
+					changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#manualDn").bind("mousedown touchstart", () => {
 					$("#stop").trigger("mousedown");
 					$.ajax({
 						type: "POST",
 						url: "movedown"
+					});
+					changeTimer = setInterval(readStatus, 500);
+				});
+
+				$("#close").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "moveto",
+						data: {
+							val: "0"
+						}
 					});
 					changeTimer = setInterval(readStatus, 500);
 				});
@@ -175,13 +202,15 @@
 						type: "POST",
 						url: "status",
 						success: answer => {
-							$("#position").val(answer.blindsPosition);
+							$("#position").val(100 - Math.round((answer.curPosition / answer.maxCount) * 100));
 							if (answer.isMoving != 0) {
 								$("#position").prop("disabled", true);
 								$("#position").css("background", "#931f1f");
+								//changeTimer = setInterval(readStatus, 500);
 							} else {
 								$("#position").prop("disabled", false);
 								$("#position").css("background", "#1fa3ec");
+								//clearInterval(changeTimer);
 							}
 						}
 					});
@@ -214,7 +243,7 @@
 					<a href="config.html" style="text-decoration: none; color: black;">Config</a>
 				</div>
 				<div style="text-align: right;">
-					Home automation, v. 0.1
+					Home automation, v. 1.0b
 				</div>
 			</footer>
 		</div>

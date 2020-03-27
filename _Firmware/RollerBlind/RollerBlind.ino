@@ -40,38 +40,59 @@ enum MotorState
   DOWN
 };
 
-int blindsPosition;
+int currentPosition;
 int newPosition;
 
-int hallEncoder;
+int hallState;
 
 String mqttTextIn;
 
 MotorState motorState = STOP;
-int upSpeed = 1024, downSpeed = 1024;
+int upSpeed, downSpeed;
 int maxCount;
-bool savePosition;
+bool savePosition = false;
+bool noLimits = false;
 
-void ICACHE_RAM_ATTR hallEncoder_A();
-void ICACHE_RAM_ATTR hallEncoder_B();
+void ICACHE_RAM_ATTR hallState_A();
+void ICACHE_RAM_ATTR hallState_B();
 
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial);
+  while (!Serial)
+    ;
 
   SPIFFS.begin();
 
-  EEPROM.begin(512);
-  hallEncoder = EEPROM.read(100);
-  blindsPosition = EEPROM.read(101);
-  newPosition = blindsPosition;
-  maxCount = EEPROM.read(501);
-  upSpeed = EEPROM.read(503);
-  downSpeed = EEPROM.read(505);
+  EEPROM.begin(16);
+  if (EEPROM.read(12) == 0x11 && EEPROM.read(13) == 0x05 && EEPROM.read(14) == 0x19 && EEPROM.read(15) == 0x76)
+  {
+    EEPROM.get(0, hallState);
+    EEPROM.get(2, currentPosition );
+    EEPROM.get(4, maxCount);
+    EEPROM.get(6, upSpeed);
+    EEPROM.get(8, downSpeed);
+  }
+  else
+  {
+    hallState = 1;
+    currentPosition = 0;
+    maxCount = 100;
+    upSpeed = 1000;
+    downSpeed = 1000;
+    EEPROM.write(12, 0x11);
+    EEPROM.write(13, 0x05);
+    EEPROM.write(14, 0x19);
+    EEPROM.write(15, 0x76);
+    EEPROM.put(0, hallState);
+    EEPROM.put(2, currentPosition);
+    EEPROM.put(4, maxCount);
+    EEPROM.put(6, upSpeed);
+    EEPROM.put(8, downSpeed);
+    EEPROM.commit();
+  }
 
-  if (maxCount == 0)
-    maxCount = 3;
+  newPosition = currentPosition;
 
   pinMode(STBY, OUTPUT);
   pinMode(PWMA, OUTPUT);
@@ -85,17 +106,17 @@ void setup()
   pinMode(HALL_A, INPUT_PULLUP);
   pinMode(HALL_B, INPUT_PULLUP);
 
-  switch (hallEncoder)
+  switch (hallState)
   {
-  case 1:
-    attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
-    break;
-  case 2:
-    attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
-    break;
-  default:
-    attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
-    attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
+    case 1:
+      attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
+      break;
+    case 2:
+      attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
+      break;
+    default:
+      attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
+      attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
   }
 
   // Подключение к точке доступа или запуск втроенной при необходимости - WiFiManager
@@ -142,14 +163,35 @@ void setup()
   server.onNotFound(handleNotFound);
 
   server.on("/moveup", []() {
-    newPosition = blindsPosition - 1;
-    moveUp();
+    if (server.hasArg("nolimits"))
+    {
+      noLimits = true;
+      moveUp();
+    }
+    else
+    {
+      if (currentPosition > 0)
+      {
+        moveUp();
+      }
+    }
+
     server.send(200, "text/plain", "moveUp:OK!");
   });
 
   server.on("/movedown", []() {
-    newPosition = blindsPosition + 1;
-    moveDown();
+    if (server.hasArg("nolimits"))
+    {
+      noLimits = true;
+      moveDown();
+    }
+    else
+    {
+      if (currentPosition < maxCount)
+      {
+        moveDown();
+      }
+    }
     server.send(200, "text/plain", "moveDown:OK!");
   });
 
@@ -166,16 +208,9 @@ void setup()
   });
 
   server.on("/setmaxcount", []() {
-    if (server.hasArg("val"))
-    {
-      maxCount = server.arg("val").toInt();
-      EEPROM.write(501, maxCount);
-      EEPROM.commit();
-    }
-    else
-    {
-      maxCount = blindsPosition;
-    }
+    maxCount = currentPosition;
+    EEPROM.put(4, maxCount);
+    EEPROM.commit();
     server.send(200, "text/plain", "setMaxCount:OK!");
   });
 
@@ -185,9 +220,9 @@ void setup()
       upSpeed = server.arg("val").toInt();
       if (upSpeed < 100)
         upSpeed = 100;
-      if (upSpeed > 1024)
-        upSpeed = 1024;
-      EEPROM.write(503, upSpeed);
+      if (upSpeed > 1000)
+        upSpeed = 1000;
+      EEPROM.put(6, upSpeed);
       EEPROM.commit();
       server.send(200, "text/plain", "setUpSpeed:OK!");
     }
@@ -203,9 +238,9 @@ void setup()
       downSpeed = server.arg("val").toInt();
       if (downSpeed < 100)
         downSpeed = 100;
-      if (downSpeed > 1024)
-        downSpeed = 1024;
-      EEPROM.write(505, downSpeed);
+      if (downSpeed > 1000)
+        downSpeed = 1000;
+      EEPROM.put(8, downSpeed);
       EEPROM.commit();
       server.send(200, "text/plain", "setDownSpeed:OK!");
     }
@@ -230,7 +265,6 @@ void setup()
       if (v * maxCount / 100 != newPosition)
       {
         newPosition = v * maxCount / 100;
-        Serial.println("newPulse:" + (String)newPosition);
         start();
       }
       server.send(200, "text/plain", "moveTo:OK!");
@@ -241,14 +275,8 @@ void setup()
     }
   });
 
-  server.on("/setdefault", []() {
-    blindsPosition = 50;
-    newPosition = 50;
-    EEPROM.write(100, hallEncoder);
-    EEPROM.write(101, blindsPosition);
-    EEPROM.write(503, downSpeed);
-    EEPROM.write(505, downSpeed);
-    EEPROM.commit();
+  server.on("/setzero", []() {
+    currentPosition = 0;
     server.send(200, "text/plain", "setDefault:OK!");
   });
 
@@ -260,19 +288,20 @@ void setup()
   server.on("/status", []() {
     StaticJsonDocument<256> root;
 
-    root["HALL_A"] = (String)digitalRead(HALL_A);
-    root["HALL_B"] = (String)digitalRead(HALL_B);
+    root["curPosition"] = (String)currentPosition;
+    root["newPosition"] = (String)newPosition;
 
-    root["hallEncoder"] = (String)hallEncoder;
+    root["maxCount"] = (String)maxCount;
+
+    root["hallA"] = (String)digitalRead(HALL_A);
+    root["hallB"] = (String)digitalRead(HALL_B);
+
+    root["hallState"] = (String)hallState;
 
     root["isMoving"] = (String)motorState;
 
-    root["maxCount"] = (String)maxCount;
     root["upSpeed"] = (String)upSpeed;
     root["downSpeed"] = (String)downSpeed;
-
-    root["blindsPosition"] = (String)blindsPosition;
-    root["newPosition"] = (String)newPosition;
 
     String json;
     serializeJson(root, json);
@@ -308,66 +337,86 @@ void loop()
   if (savePosition)
   {
     savePosition = false;
-    EEPROM.write(100, hallEncoder);
-    EEPROM.write(101, blindsPosition);
+    EEPROM.put(0, hallState);
+    EEPROM.put(2, currentPosition);
     EEPROM.commit();
     sendCurrentPositionMQTT();
     sendTargetPositionMQTT();
   }
 }
 
-void ICACHE_RAM_ATTR hallEncoder_A()
+void ICACHE_RAM_ATTR hallState_A()
 {
   detachInterrupt(digitalPinToInterrupt(HALL_A));
-  attachInterrupt(digitalPinToInterrupt(HALL_B), hallEncoder_B, FALLING);
+  attachInterrupt(digitalPinToInterrupt(HALL_B), hallState_B, FALLING);
 
-  hallEncoder = 1;
+  hallState = 1;
 
   if (motorState == DOWN)
   {
-    blindsPosition++;
-    if (blindsPosition >= maxCount)
-      stop();
+    if (!noLimits)
+    {
+      if (currentPosition >= newPosition || currentPosition >= maxCount) {
+        stop();
+        return;
+      }
+    }
+    currentPosition++;
   }
   else if (motorState == UP)
   {
-    blindsPosition--;
-    if (blindsPosition <= 0)
-      stop();
+    if (!noLimits)
+    {
+      if (currentPosition <= newPosition || currentPosition <= 0) {
+        stop();
+        return;
+      }
+    }
+    currentPosition--;
   }
 }
 
-void ICACHE_RAM_ATTR hallEncoder_B()
+void ICACHE_RAM_ATTR hallState_B()
 {
   detachInterrupt(digitalPinToInterrupt(HALL_B));
-  attachInterrupt(digitalPinToInterrupt(HALL_A), hallEncoder_A, FALLING);
+  attachInterrupt(digitalPinToInterrupt(HALL_A), hallState_A, FALLING);
 
-  hallEncoder = 2;
+  hallState = 2;
 
   if (motorState == DOWN)
   {
-    blindsPosition++;
-    if (blindsPosition >= newPosition || blindsPosition >= maxCount)
-      stop();
+    if (!noLimits)
+    {
+      if (currentPosition >= newPosition || currentPosition >= maxCount) {
+        stop();
+        return;
+      }
+    }
+    currentPosition++;
   }
   else if (motorState == UP)
   {
-    blindsPosition--;
-    if (blindsPosition <= newPosition || blindsPosition <= 0)
-      stop();
+    if (!noLimits)
+    {
+      if (currentPosition <= newPosition || currentPosition <= 0) {
+        stop();
+        return;
+      }
+    }
+    currentPosition--;
   }
 }
 
 void start()
 {
-  if (newPosition == blindsPosition || newPosition < 0 || newPosition > maxCount)
+  if (newPosition == currentPosition || newPosition < 0 || newPosition > maxCount)
     return;
 
-  if (newPosition > blindsPosition)
+  if (newPosition > currentPosition)
   {
     moveDown();
   }
-  else if (newPosition < blindsPosition)
+  else if (newPosition < currentPosition)
   {
     moveUp();
   }
@@ -398,6 +447,8 @@ void stop()
   digitalWrite(INA1, LOW);
   digitalWrite(INA2, LOW);
 
+  noLimits = false;
+  newPosition = currentPosition;
   savePosition = true;
 }
 
@@ -438,7 +489,7 @@ void sendCurrentPositionMQTT()
   root["name"] = deviceName;
   root["service_name"] = "Штора 1";
   root["characteristic"] = "CurrentPosition";
-  root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
+  root["value"] = (int)100 - (currentPosition * 100 / maxCount);
 
   char json[200];
   serializeJson(root, json);
@@ -454,7 +505,7 @@ void sendTargetPositionMQTT()
   root["name"] = deviceName;
   root["service_name"] = "Штора 1";
   root["characteristic"] = "TargetPosition";
-  root["value"] = (int)100 - (blindsPosition * 100 / maxCount);
+  root["value"] = (int)100 - (currentPosition * 100 / maxCount);
 
   char json[200];
   serializeJson(root, json);

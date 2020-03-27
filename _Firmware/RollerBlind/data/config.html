@@ -187,25 +187,38 @@
 		<script>
 			$(() => {
 				let changeTimer;
-				readStatus();
+
+				let curPos;
+				let maxCount;
+				let hallA;
+				let hallB;
+				let hallState;
+				let isMoving;
+				let upSpeed;
+				let dnSpeed;
+
+				let moveTo;
+
+				let firstRead = true;
+
 				$("#enter").click(() => {
-					// $.ajax({
-					// 	type: "POST",
-					// 	url: "login",
-					// 	data: { login: $("#login").val(), pass: $("#password").val() },
-					// 	success: answer => {
-					// 		if (answer == "Auth OK") {
-					// 			readStatus();
-					// 			$("#passwd").slideUp(400);
-					// 			$("#config").slideDown(400);
-					// 		} else {
-					// 			$("#login").val("");
-					// 			$("#password").val("");
-					// 		}
-					// 	}
-					// });
-					$(".passwd").slideUp(400);
-					$(".config").slideDown(400);
+					$.ajax({
+						type: "POST",
+						url: "login",
+						data: { login: $("#login").val(), pass: $("#password").val() },
+						success: answer => {
+							if (answer == "Auth OK") {
+								readStatus();
+
+								changeTimer = setInterval(readStatus, 500);
+								$(".passwd").slideUp(400);
+								$(".config").slideDown(400);
+							} else {
+								$("#login").val("");
+								$("#password").val("");
+							}
+						}
+					});
 				});
 
 				$("#login,#password").keyup(event => {
@@ -219,12 +232,137 @@
 						type: "POST",
 						url: "status",
 						success: answer => {
-							$("#maxCount").val(answer.maxCount);
-							$("#upSpeed").val(answer.upSpeed);
-							$("#downSpeed").val(answer.downSpeed);
+							curPos = answer.curPosition;
+							$("#curPos").html(curPos);
+							maxCount = answer.maxCount;
+							$("#maxCount").html(maxCount);
+							hallA = answer.hallA;
+							$("#hallA").html(hallA);
+							hallB = answer.hallB;
+							$("#hallB").html(hallB);
+							hallState = answer.hallState;
+							$("#hallState").html(hallState);
+							isMoving = answer.isMoving;
+							$("#isMoving").html(isMoving);
+							upSpeed = answer.upSpeed;
+							$("#upSpeed").html(upSpeed);
+							dnSpeed = answer.downSpeed;
+							$("#dnSpeed").html(dnSpeed);
+
+							if (firstRead) {
+								firstRead = false;
+								$("#maxCountRange").val(maxCount);
+								$("#maxCountEdit").val(maxCount);
+								$("#upSpeedRange").val(upSpeed);
+								$("#upSpeedEdit").val(upSpeed);
+								$("#dnSpeedRange").val(dnSpeed);
+								$("#dnSpeedEdit").val(dnSpeed);
+							}
 						}
 					});
 				}
+
+				$("#manUp").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "moveup",
+						data: {
+							nolimits: "1"
+						}
+					});
+				});
+
+				$("#manDn").bind("mousedown touchstart", () => {
+					$("#stop").trigger("mousedown");
+					$.ajax({
+						type: "POST",
+						url: "movedown",
+						data: {
+							nolimits: "1"
+						}
+					});
+				});
+
+				$("#manUp, #manDn").bind("mouseup touchend", () => {
+					$("#stop").trigger("mousedown");
+				});
+
+				$("#stop").bind("mousedown touchstart", () => {
+					$.ajax({
+						type: "POST",
+						url: "stop"
+					});
+				});
+
+				$("#reset").bind("mousedown touchstart", () => {
+					$.ajax({
+						type: "POST",
+						url: "reset"
+					});
+				});
+
+				$("#setZero").bind("mousedown touchstart", () => {
+					$.ajax({
+						type: "POST",
+						url: "setzero"
+					});
+					firstRead = true;
+					readStatus();
+				});
+
+				$("#setMaxCount").bind("mousedown touchstart", () => {
+					$.ajax({
+						type: "POST",
+						url: "setmaxcount"
+					});
+					firstRead = true;
+					readStatus();
+				});
+
+				$("#upSpeedRange").change(() => {
+					$("#upSpeedEdit").val($("#upSpeedRange").val());
+					$.ajax({
+						type: "POST",
+						url: "setupspeed",
+						data: {
+							val: $("#upSpeedRange").val()
+						}
+					});
+				});
+
+				$("#upSpeedEdit").change(() => {
+					$("#upSpeedRange").val($("#upSpeedEdit").val());
+					$.ajax({
+						type: "POST",
+						url: "setupspeed",
+						data: {
+							val: $("#upSpeedEdit").val()
+						}
+					});
+				});
+
+				$("#dnSpeedRange").change(() => {
+					$("#dnSpeedEdit").val($("#dnSpeedRange").val());
+					$.ajax({
+						type: "POST",
+						url: "setdownspeed",
+						data: {
+							val: $("#dnSpeedRange").val()
+						}
+					});
+				});
+
+				$("#dnSpeedEdit").change(() => {
+					$("#dnSpeedRange").val($("#dnSpeedEdit").val());
+					$.ajax({
+						type: "POST",
+						url: "setdownspeed",
+						data: {
+							val: $("#dnSpeedEdit").val()
+						}
+					});
+				});
 			});
 		</script>
 	</head>
@@ -260,8 +398,8 @@
 					<div id="hallB" class="currentValue">
 						0
 					</div>
-					<p>EncState:</p>
-					<div id="hallEnc" class="currentValue">
+					<p>HallState:</p>
+					<div id="hallState" class="currentValue">
 						255
 					</div>
 					<p>IsMoving:</p>
@@ -285,24 +423,20 @@
 
 				<div class="buttons2">
 					<button id="stop">Stop</button>
+					<button id="setZero">Set UP Pos.</button>
+					<button id="setMaxCount">Set DOWN Pos.</button>
 				</div>
 
 				<div class="parameters">
-					<p>NewPos:</p>
-					<input type="range" id="newPosRange" class="position" min="0" max="100" value="50" step="10" />
-					<input type="number" id="newPosEdit" min="0" max="100" value="50" step="10" />
-					<p>MaxCount:</p>
-					<input type="range" id="maxCountRange" class="position" min="100" max="500" value="100" step="1" />
-					<input type="number" id="maxCountEdit" min="100" max="500" value="100" step="1" />
-					<p>UpSpeed:</p>
+					<p>Up Speed:</p>
 					<input type="range" id="upSpeedRange" class="position" min="100" max="1000" value="1000" step="100" />
 					<input type="number" id="upSpeedEdit" min="100" max="1000" value="1000" step="100" />
-					<p>DownSpeed:</p>
+					<p>Down Speed:</p>
 					<input type="range" id="dnSpeedRange" class="position" min="100" max="1000" value="1000" step="100" />
 					<input type="number" id="dnSpeedEdit" min="100" max="1000" value="1000" step="100" />
 				</div>
+
 				<div class="buttons2">
-					<button id="default">Load default</button>
 					<button id="reset">Reset</button>
 				</div>
 				<hr />
@@ -311,7 +445,7 @@
 						<a href="/" style="text-decoration: none; color: black;">Main</a>
 					</div>
 					<div style="text-align: right;">
-						Home automation, v. 0.1
+						Home automation, v. 1.0b
 					</div>
 				</footer>
 			</div>
