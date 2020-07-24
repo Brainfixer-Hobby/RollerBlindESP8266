@@ -40,16 +40,16 @@ enum MotorState
   DOWN
 };
 
-int currentPosition;
-int newPosition;
+int16_t currentPosition;
+int16_t newPosition;
 
-int hallState;
+int16_t hallState;
 
 String mqttTextIn;
 
 MotorState motorState = STOP;
-int upSpeed, downSpeed;
-int maxCount;
+int16_t upSpeed, downSpeed;
+int16_t maxCount;
 bool savePosition = false;
 bool noLimits = false;
 
